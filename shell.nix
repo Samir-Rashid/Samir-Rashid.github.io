@@ -26,3 +26,12 @@ in
 
 # echo "Use `bundle exec jekyll serve`"
 # BUNDLE_FORCE_RUBY_PLATFORM = "true";
+
+
+# To update from upstream:
+
+# git checkout -b academicpages-master master
+# git pull https://github.com/academicpages/academicpages.github.io.git master
+# git pull https://github.com/academicpages/academicpages.github.io.git master --no-rebase
+# git checkout master
+# git merge academicpages-master
