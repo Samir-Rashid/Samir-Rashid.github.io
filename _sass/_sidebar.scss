@@ -56,6 +56,22 @@
   }
 }
 
+/*
+To fix sidebar being in the side and sticky
+https://mendax1234.github.io/Java8-Installation/
+
+  .sidebar__right {
+    position: sticky !important;
+    float: right !important;
+    top: 0;
+    right: 0;
+    width: 200px;
+    margin-right: -200px;
+    padding-left: 1em;
+    padding-top: 1em !important;
+    z-index: 10;
+*/
+
 .sidebar__right {
   margin-bottom: 1em;
 
