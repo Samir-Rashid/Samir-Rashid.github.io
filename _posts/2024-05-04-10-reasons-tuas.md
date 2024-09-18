@@ -12,12 +12,20 @@ header:
 
 <div class="notice notice--announcement" markdown="1">
 
-#### This post is a reprint of the [original post](http://tuas.ucsd.edu/blog/10-reasons/) I wrote on the Triton UAS blog. This post has been edited to add `COMMENTARY` blocks with my own commentary.
+<h4 markdown="1">
 
-#### [Triton UAS](http://tuas.ucsd.edu/) is a club at UC San Diego which makes Unmanned Aerial Systems, aka autonomous planes.
+This post is a reprint of the [original post](http://tuas.ucsd.edu/blog/10-reasons/) I wrote on the Triton UAS blog. This post has been edited to add `COMMENTARY` blocks with my own commentary.
+</h4>
+
+<h4 markdown="1">
+
+[Triton UAS](http://tuas.ucsd.edu/) is a club at UC San Diego which makes Unmanned Aerial Systems, aka autonomous planes.
+</h4>
 </div>
 
 LA JOLLA, CA - [UC San Diego](https://ucsd.edu/)'s massive campus offers hundreds of clubs to join and thousands of classes to take. When I came to UCSD, I spent a lot of time shopping around for what I wanted to do with my free time here. I read through the list of all clubs multiple times to find a place to belong. I want to share why Triton UAS members chose to join, and why sticking with Triton UAS for four years turned out to be the best decision I could ever make.
+
+{% include toc %}
 
 <div class="commentary-author">Commentary</div>
 <div class="commentary-body">
