@@ -13,6 +13,7 @@ redirect_from:
 
 I am a software engineer and researcher working on the Rust-based [Tock Operating System](https://tockos.org/). I am working on developing secure devices such as roots of trust and FIDO security keys.
 My research is trying to make systems understandable, safe, and correct. We are proving that Tock OS's memory isolation guarantee is *impossible* to violate. You can [click here](https://godsped.com/safe-firmware/) to learn more about how we are applying lightweight formal verification to do this.
+I am advised by Professors Pat Pannuto and Ranjit Jhala, and I work with Professor Geoffrey Voelker as a TA for Operating Systems (CSE 120).
 In my free time, I am a lead mentor for [FIRST Robotics Team 812](https://www.themidnightmechanics.com/) where I hope to inspire high schoolers with a "sense of wonder" through hands on experience.
 
 I graduated with my bachelor's from UC San Diego, double majoring in Math and Computer Science and minoring in Classical Studies. Outside of class, I was a member of [Triton Unmanned Aerial Systems](https://tuas.ucsd.edu/) club working working as a jack-of-all-trades and on 3D path planning for our autonomous plane. 
