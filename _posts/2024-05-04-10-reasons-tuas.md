@@ -7,7 +7,7 @@ date: 2024-05-04
 tags:
   - undergrad
 header:
-  teaser: "/images/10-reasons/tuas3.webp"
+  teaser: "10-reasons/tuas3.webp"
 ---
 
 <div class="notice notice--announcement" markdown="1">
