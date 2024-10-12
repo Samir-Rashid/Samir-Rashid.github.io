@@ -48,7 +48,7 @@ The other two processes take the `else` block. The `execv()` call switches the p
 
 Therefore, a total of six processes are created, and the ls command is run twice.
 
-![tree diagram of the processes created]()
+![tree diagram of the processes created](/images/bug_snacks/fork-tree.png)
 
 </details>
 
