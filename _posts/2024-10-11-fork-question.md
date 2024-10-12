@@ -121,7 +121,15 @@ run the program should make it behave more like you expect it would.
 
 </div>
 
-Don't believe me? How can we test this? Tools like gdb and strace will not be of much use. To test this theory, we need to realize that the unbuffered text does not get magically printed by the shell.
+Don't believe me? How can we test this? Tools like gdb and strace will not be of much use. To test this theory, we need to realize that the unbuffered text does not get magically printed by the shell. The following program does not print "start".
+
+```c
+int main (int argc, char *arg[])
+{
+    printf("start");
+    raise(SIGABRT);
+}
+```
 
 It is [`libc` semantics](https://superuser.com/a/1288912) to flush the buffer on clean exit. This is not OS semantics, but the implementation of how `libc` exits. Of course, if you print with a newline then this problem will never arise.
 
