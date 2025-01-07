@@ -11,6 +11,10 @@ redirect_from:
 ---
 {% include base_path %}
 
+<div class="notice notice--announcement" markdown="1">
+#### I will be attending [SoCal Programming Languages and Systems](https://socalpls.github.io/) (February 7th, 2025 in La Jolla, California) and [SCaLE 22x](https://www.socallinuxexpo.org/scale/22x), which is co-locating with [Planet Nix](https://planetnix.com/) (March 6-9, 2025 in Pasadena, California). Reach out if you'd like to meet me there!
+</div>
+
 I am a software engineer and researcher working on the Rust-based [Tock Operating System](https://tockos.org/). I am working on developing secure devices such as roots of trust and FIDO security keys.
 My research is trying to make systems understandable, safe, and correct. 
 
