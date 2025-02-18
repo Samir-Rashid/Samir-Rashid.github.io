@@ -21,7 +21,7 @@ My research is trying to make systems understandable, safe, and correct.
 I work on the [Flux](https://github.com/flux-rs/flux) verification tool for Rust. We are using Flux to formally guarantee that an OS is secure. Our research applies lightweight formal methods (refinement types) to show that you can easily prove useful properties at compile time, such as the memory isolation guarantee of an embedded operating system. This project *proves* that it is impossible for an attacker to ever violate process isolation guarantees in Tock OS. Tock OS is a security-focused operating system for embedded devices, is written in Rust, and is used as the root of trust in millions of devices. You can [click here](https://godsped.com/safe-firmware/) to learn more about how we are applying lightweight formal verification to do this.
 
 I am advised by Professors [Pat Pannuto](https://patpannuto.com/) and [Ranjit Jhala](https://ranjitjhala.github.io/). I am a TA for Professor Pat Pannuto's [Wireless Embedded Systems (CSE 222C)](https://cseweb.ucsd.edu/classes/wi25/cse222C-a/index.html) and previously TAed for Professor [Geoffrey Voelker's](https://cseweb.ucsd.edu/~voelker/) [Operating Systems (CSE 120)](https://cseweb.ucsd.edu/classes/fa24/cse120-a/).
-In my free time, I am a lead mentor for [FIRST Robotics Team 812](https://www.themidnightmechanics.com/) where I hope to inspire high schoolers with a "sense of wonder" through hands on experience.
+In my free time, I am a mentor for [FIRST Robotics Team 812](https://www.themidnightmechanics.com/) where I hope to inspire high schoolers with a "sense of wonder" through hands on experience.
 
 I graduated with my bachelor's from UC San Diego, double majoring in Math and Computer Science and minoring in Classical Studies. Outside of class, I was a member of [Triton Unmanned Aerial Systems](https://tuas.ucsd.edu/) club working working as a jack-of-all-trades and on 3D path planning for our autonomous plane. 
 
@@ -42,7 +42,7 @@ I am also passionate about the application of simulation in developing robust sy
 
 👋 Hey, I'm Samir, but you can call me Samir.
 
-My covid hobby has been an Among Us addiction. I also have been going through my backlog of things I've been meaning to do (like giving this site a little love 🫀). If you have any recommendations, I enjoy discovering new music and seeing all the interesting genres people come up with. Despite my true love being software and me being wholly incompetent at the physical engineering disciplines, I enjoy fiddling around with hardware. I hope to spend more time working on physical projects in the future.
+My recent hobby has been an Among Us addiction. I also have been going through my backlog of things I've been meaning to do (like giving this site a little love 🫀). If you have any recommendations, I enjoy discovering new music and seeing all the interesting genres people come up with. Despite my true love being software and me being wholly incompetent at the physical engineering disciplines, I enjoy fiddling around with hardware. I hope to spend more time working on physical projects.
 
 I'd love to talk about anything! Feel free to suggest a time that works [here](https://calendly.com/samir0/30min) 🕰.
 
@@ -62,6 +62,31 @@ I'd love to talk about anything! Feel free to suggest a time that works [here](h
 - 📰 current favorite [Wikipedia article](https://en.wikipedia.org/wiki/Corrupted_Blood_incident)
 - 🦍 current favorite [game](https://store.steampowered.com/app/1533390/Gorilla_Tag/)
 - 🐳 current favorite [movie](https://en.wikipedia.org/wiki/The_Whale_(2022_film))
+
+### Quotes
+
+<div class="commentary-author">Casey Handmer</div>
+<div class="commentary-body">
+If your vision for the future
+includes elements that will not occur
+by themselves, you have to build them
+</div>
+
+<div class="commentary-author">Chris Lewicki</div>
+<div class="commentary-body" markdown="1">
+Make what’s possible, *inevitable*.
+</div>
+
+<div class="commentary-author">JFK</div>
+<div class="commentary-body">
+We choose to go to the Moon
+</div>
+
+<div class="commentary-author">Samir Rashid</div>
+<div class="commentary-body">
+Everything is understandable.
+</div>
+
 
 ## For more info
 

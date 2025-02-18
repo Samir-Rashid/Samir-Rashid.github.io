@@ -83,6 +83,6 @@ This paper shows there is a correlation between [swear word usage and code quali
 
 The kernel continues to evolve as new developers come in. The amount of contributors joining and staying on the Linux project [keeps](https://bitergia.com/blog/opensource/demographics-of-linux-kernel-developers-how-old-are-they/) [dropping](https://www.zdnet.com/article/graying-linux-developers-look-for-new-blood/).
 
-For example, efforts to push Rust into Linux have been causing controversy. Eventually, Linus himself will have to step down.  
+For example, efforts to push Rust into Linux have been causing controversy. Eventually, Linus himself will have to step down. Being a maintainer is stressful, and even [maintainers are human](https://www.redox-os.org/news/open-source-mental-health/).
 
 Further, contributions are done less than ever by open source hackers. Linux contributions are becoming more commercial, which means that contributors' incentives may not align with that of the Linux project as a whole. [Over 90%](https://www.linuxfoundation.org/blog/blog/jonathan-corbet-on-linux-kernel-contributions-community-and-core-needs) of contributors are being paid by their employer to submit patches. Nobody wants to pay to build the infrastructure to make Linux development better (ex: Coccinelle) or to write high quality documentation. These create barriers to the natural growth of the project among younger developers and other demographics.
