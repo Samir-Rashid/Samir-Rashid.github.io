@@ -14,12 +14,18 @@ TODO: who is this post for? write intro explaining background needed
 
 TODO: redo without nix store
 
+TODO: really need the better code formatting like https://squidfunk.github.io/mkdocs-material/reference/code-blocks/
+
 # Linux Spelunking: How are processes loaded? How would I figure it out?
 
 Let's journey into Linux to find out how programs are loaded.
 Building new systems requires you to understand how the current system actually works — not how it works according to the documentation.
 This post is meant for people who want to learn more about kernel internals but have been hesitating to dive in for themselves.
+I am writing the post I wish I had when starting out.
+I will hopefully convince you that kernel development is not intimidating.
 We will explore how to deal with ambiguity and come out with an understanding for the exact actions Linux takes when loading a realistic program.
+
+This is documentation I wish I had. In this post, we will demystify how Linux loads processes and discover how Linux works on a journey that reminds me of the joys of computers and discovery.
 
 > **Goal**: How does Linux load a program?
 
@@ -269,14 +275,53 @@ Let's put a pin in this stuff we have seen in case it comes up later. Writing a 
 
 ### How to open a binary?
 
-> Hey search engine, how can I open `a.out` C binary file?
+> Dear search engine, how can I open `a.out` C binary file?
 
-The internet reveals the tool we need: `objdump`. You probably already have `objdump` installed as it comes with the `gcc` package. This bundling tells us that both `objdump` is probably very useful and it's a default tool which is important to be familiar with.
+The the tool we need is `objdump`. `objdump` comes installed with the `gcc` package. This bundling indicates that `objdump` is probably very useful and it is a default tool which is important to be familiar with.
 
-I see some nonsense in the objdump. I cannot recognize this is the same as my original `hello_world.c`.
+```sh
+$ # first look at the help output
+$ objdump 
+<omitted>
+$ objdump -D ./a.out
+<abbreviated for readability>
+0000000000401050 <main>:
+  401050:       83 ff 01                cmp    $0x1,%edi
+  401053:       7e 17                   jle    40106c <main+0x1c>
+  401055:       48 8b 56 08             mov    0x8(%rsi),%rdx
+  401059:       bf 02 00 00 00          mov    $0x2,%edi
+  40105e:       31 c0                   xor    %eax,%eax
+  401060:       48 8d 35 b4 0f 00 00    lea    0xfb4(%rip),%rsi        # 40201b <_IO_stdin_used+0x1b>
+  401067:       e9 d4 ff ff ff          jmp    401040 <__printf_chk@plt>
+  40106c:       48 8d 3d 91 0f 00 00    lea    0xf91(%rip),%rdi        # 402004 <_IO_stdin_used+0x4>
+  401073:       e9 b8 ff ff ff          jmp    401030 <puts@plt>
+  401078:       0f 1f 84 00 00 00 00    nopl   0x0(%rax,%rax,1)
+  40107f:       00
+```
+
+I see some nonsense in the objdump. I cannot recognize this is the same as my original `hello_name.c`.
 
 First we must recompile with debug flags to make this easier. Now I think we have explored our way to the right level of abstraction on what printf is actually doing.
 Binary spelunking is the perfect way to see what the CPU is running in order to get us to hello world showing up.
+
+```
+0000000000401050 <main>:
+  401050:       83 ff 01                cmp    $0x1,%edi
+  401053:       7e 17                   jle    40106c <main+0x1c>
+  401055:       48 8b 56 08             mov    0x8(%rsi),%rdx
+  401059:       bf 02 00 00 00          mov    $0x2,%edi
+  40105e:       31 c0                   xor    %eax,%eax
+  401060:       48 8d 35 b4 0f 00 00    lea    0xfb4(%rip),%rsi        # 40201b <_IO_stdin_used+0x1b>
+  401067:       e9 d4 ff ff ff          jmp    401040 <__printf_chk@plt>
+  40106c:       48 8d 3d 91 0f 00 00    lea    0xf91(%rip),%rdi        # 402004 <_IO_stdin_used+0x4>
+  401073:       e9 b8 ff ff ff          jmp    401030 <puts@plt>
+  401078:       0f 1f 84 00 00 00 00    nopl   0x0(%rax,%rax,1)
+  40107f:       00
+```
+
+Trace the assembly
+
+<diagram, note puts vs printf>
 
 Every time we try something new, I want to try doing the simplest thing so my brain isn't getting overloaded with unneeded context. Let's first try out this new tool on our `hello_world` binary.
 
@@ -310,11 +355,7 @@ A spoiler, as it turns out, we are going to need to understand both of these thi
 
 Online it seems there is a file format called ELF.
 
-
 There's a lot of output from this disassembly. I scrolled through it to see anything interesting. The ordering of these instructions is a bit confusing, so it may not be productive to jump into tracing the instructions of printf.
-
-
-
 
 
 ### where art thou, `printf`?
@@ -375,7 +416,7 @@ objdump -D ./a.out | less
 # then type "/printf" <enter>
 ```
 
-```
+```c
 Disassembly of section .plt:
 
 0000000000401020 <puts@plt-0x10>:
@@ -405,7 +446,7 @@ Disassembly of section .text:
   401067:       e9 d4 ff ff ff          jmp    401040 <__printf_chk@plt>
 ```
 
-```
+```c
 Disassembly of section .plt:
 [...]
 0000000000401040 <__printf_chk@plt>:
@@ -505,7 +546,7 @@ It appears this file doesn't know where these functions are located. The rabbit 
 
 ## Go Deeper, Brother
 
-We can use `gdb` to gain confidence (or to invalidate) our new theory.
+We can use `gdb` to gain confidence in (or to invalidate) our new theory.
 We know the address of our `plt`, so let's print out that memory and see if it got loaded even before our code runs.
 
 Cool. And we can confirm this points to the area of virtual memory which `strace` told us that `libc` got read to. So this is definitley not a function call inside our code. `libc` is providing the implementation.
@@ -518,10 +559,77 @@ Armed with this knowledge, we can both understand the world and bend it to our w
 
 We learned how processes are loaded and how libraries can by dynamically loaded. We even know how to manipulate a running program.
 
+The "GOT and PLT for pwning" source at the bottom explains how to pwn the PLT/GOT. 
+
+[[[ got /plt diagram ]]]
+```c
+(gdb) disass 'puts@plt'
+Dump of assembler code for function puts@plt:
+   0x0000000000401030 <+0>:     jmp    *0x2faa(%rip)        # 0x403fe0 <puts@got.plt>
+   0x0000000000401036 <+6>:     push   $0x0
+   0x000000000040103b <+11>:    jmp    0x401020
+End of assembler dump.
+```
+
+That line is a jump which follows a pointer to the jump location.
+`gdb` left a comment telling us that this value points to the entry for the "puts" symbol in the GOT.
+
+If we look back at the `strace` and search for this address `0x403fe0`, we will see this line get matched.
+
+```c
+mprotect(0x403000, 4096, PROT_READ)     = 0
+```
+
+The pwning blog post explains more, but this line makes the table entries read only.
+In context of our program, this means that the entire GOT got resolved by the loader and then marked as read only for security. Other programs or OSes may not resolve every library function immediately.
+These may get lazily loaded. These function pointers in the table can instead point into the loader, which will cause the loader to be able to resolve the address on-demand for future library calls.
+
+
+
 ## Knowledge Check
 
 Can you find an input to this function [link to starcode and liveoverflow video]
 With what you know, you should be able to complete this fun and difficult exercise using normal control flow.
+
+```c
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+
+int target;
+
+void hello()
+{
+  printf("code execution redirected! you win\n");
+  _exit(1);
+}
+
+void vuln()
+{
+  char buffer[512];
+
+  fgets(buffer, sizeof(buffer), stdin);
+
+  printf(buffer);
+
+  exit(1);  
+}
+
+int main(int argc, char **argv)
+{
+  vuln();
+}
+```
+Source: [protostar](https://exploit.education/protostar/format-four/), [updated version](https://exploit.education/phoenix/stack-four/)
+
+Background knowledge: [LiveOverflow video](https://www.youtube.com/watch?v=kUk5pw4w0h4)
+
+Solution: [LiveOverflow video](https://www.youtube.com/watch?v=t1LH9D5cuK4)
+
+Even if you do not go through the exercise, this video is very much worth watching.
+It is much easier to understand the execution flow through the GOT and PLT in video form.
+
 
 
 ## Now it's your turn
@@ -606,28 +714,113 @@ Need to look at both man pages, man 2 is up to date but links to man mmap.
 
 ## Kernel Sourcerers
 
-Ooh let's look at source code.
-mmap goes nowehre
-looking it up let's find sys_mmap
+Ooh let's look at source code. Instead of pulling the latest kernel, I like using a web search such as livegrep or elixir bootlin.
 
-footnote: path to finding this is using this post https://stackoverflow.com/questions/14542348/how-to-find-a-definition-of-a-specific-syscall-in-linux-sources and then use regex "." syntax to find the definition of mmap
+We want to find the entrypoint of calling the `mmap` syscall.
+Searching `mmap` does not get anywhere. 
 
-https://github.com/torvalds/linux/blob/v6.13/arch/arm64/kernel/sys.c#L28
+Stackoverflow tells us that we should [look for `sys_mmap`](https://livegrep.com/search/linux?q=file%3A.c%20sys_mmap%20path%3Aarm64&fold_case=auto&regex=false&context=true) or the macro which defines syscalls [^1].
 
-https://livegrep.com/search/linux?q=file%3A.c%20sys_mmap%20path%3Aarm64&fold_case=auto&regex=false&context=true
+> [arch/arm64/kernel/sys.c](https://github.com/torvalds/linux/blob/v6.13/arch/arm64/kernel/sys.c#L28)
+> 
+> ```c
+> SYSCALL_DEFINE6(mmap, unsigned long, addr, unsigned long, len,
+> 		unsigned long, prot, unsigned long, flags,
+> 		unsigned long, fd, unsigned long, off)
+> {
+> 	if (offset_in_page(off) != 0)
+> 		return -EINVAL;
+> 
+> 	return ksys_mmap_pgoff(addr, len, prot, flags, fd, off >> PAGE_SHIFT);
+> }
+> ```
 
-calls some function which we can use github to quickly find definitions.
-https://github.com/torvalds/linux/blob/master/mm/mmap.c#L569
+The GitHub symbols panel makes it easy to find definitions and references of symbols. 
+GitHub reveals the definition og `ksys_mmap_pgoff` is [in `mmap.c`]( https://github.com/torvalds/linux/blob/master/mm/mmap.c#L569).
 
-You will notice the logic is in `do_mmap`
-https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/mmap.c#L280
+The filename indicates we are in the right place. A manual inspection of this file shows us that the core logic is in [`do_mmap`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/mmap.c#L280).
+
+```c
+/**
+ * do_mmap() - Perform a userland memory mapping into the current process
+ * address space of length @len with protection bits @prot, mmap flags @flags
+ * (from which VMA flags will be inferred), and any additional VMA flags to
+ * apply @vm_flags. If this is a file-backed mapping then the file is specified
+ * in @file and page offset into the file via @pgoff.
+ * [...]
+ */
+unsigned long do_mmap(struct file *file, unsigned long addr,
+			unsigned long len, unsigned long prot,
+			unsigned long flags, vm_flags_t vm_flags,
+			unsigned long pgoff, unsigned long *populate,
+			struct list_head *uf)
+{ [...] }
+```
 
 Now here we have a source code comment that tells us the exact mechanics of what is happening. It fills in some of the implementation details.
 
-You can see all this function does is a whole lot of permission checking. Here we find the source of truth for https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/mmap.c#L469 the MAP_PRIVATE flag.
+[do_mmap()](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/mmap.c#L359-L381)
+```c
+if ((prot & PROT_READ) && (current->personality & READ_IMPLIES_EXEC))
+		if (!(file && path_noexec(&file->f_path)))
+			prot |= PROT_EXEC;
 
-We can trace the function calls `mmap_region` https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/vma.c#L2509
-⟶ `__mmap_region`
+	/* force arch specific MAP_FIXED handling in get_unmapped_area */
+	if (flags & MAP_FIXED_NOREPLACE)
+		flags |= MAP_FIXED;
+
+	if (!(flags & MAP_FIXED))
+		addr = round_hint_to_min(addr);
+
+	/* Careful about overflows.. */
+	len = PAGE_ALIGN(len);
+	if (!len)
+		return -ENOMEM;
+
+	/* offset overflow? */
+	if ((pgoff + (len >> PAGE_SHIFT)) < pgoff)
+		return -EOVERFLOW;
+
+	/* Too many mappings? */
+	if (mm->map_count > sysctl_max_map_count)
+		return -ENOMEM;
+```
+You can see all this function does is a whole lot of permission checking. Here we find the source of truth for the `MAP_PRIVATE` flag.
+
+[`MAP_PRIVATE` case](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/mmap.c#L469-L482)
+
+```c
+	case MAP_PRIVATE:
+			if (!(file->f_mode & FMODE_READ))
+				return -EACCES;
+			if (path_noexec(&file->f_path)) {
+				if (vm_flags & VM_EXEC)
+					return -EPERM;
+				vm_flags &= ~VM_MAYEXEC;
+			}
+
+			if (!file->f_op->mmap)
+				return -ENODEV;
+			if (vm_flags & (VM_GROWSDOWN|VM_GROWSUP))
+				return -EINVAL;
+			break;
+```
+
+[code after permissions checking](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/mmap.c#L561-L567)
+```c
+	addr = mmap_region(file, addr, len, vm_flags, pgoff, uf);
+	if (!IS_ERR_VALUE(addr) &&
+	    ((vm_flags & VM_LOCKED) ||
+	     (flags & (MAP_POPULATE | MAP_NONBLOCK)) == MAP_POPULATE))
+		*populate = len;
+	return addr;
+}
+```
+
+Now you have seen how to trace functions by finding the definition of symbols. Once you find a function, tracing backwards from the return code helps to reduce the irrelevant code to sift through.
+
+We repeat tracing the function calls [`mmap_region`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/vma.c#L2509)
+⟶ [`__mmap_region`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/vma.c#L2434)
 
 [Virtual Memory Areas](https://www.kernel.org/doc/gorman/html/understand/) full details are in this document.
 We can ignore the details about virtual memory. We can focus on the note about the file which is being loaded.
@@ -652,64 +845,95 @@ So now, you might guess that we need to look at the logic on a page fault of one
 
 Inside of arm64's `do_page_fault` we see where the memory mapping code gets called
 
-https://github.com/torvalds/linux/blob/ffd294d346d185b70e28b1a28abe367bbfe53c04/arch/arm64/mm/fault.c#L647
+[arch/arm64/mm /fault.c](https://github.com/torvalds/linux/blob/ffd294d346d185b70e28b1a28abe367bbfe53c04/arch/arm64/mm/fault.c#L647)
+
+```c
+static int __kprobes do_page_fault(unsigned long far, unsigned long esr,
+				   struct pt_regs *regs)
+{
+  [...]
+	fault = handle_mm_fault(vma, addr, mm_flags | FAULT_FLAG_VMA_LOCK, regs);
+```
 ⟶
-https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L6177
+[`handle_mm_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L6177)
 
-`__handle_mm_fault`
-https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L5950
+```c
+vm_fault_t handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
+			   unsigned int flags, struct pt_regs *regs)
+{
+  [...]
+		ret = __handle_mm_fault(vma, address, flags);
+```
+⟶
+[`__handle_mm_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L5950)
 
-Are you getting a hang of it? Even though there is a lot of code, the kernel source is extremely high quality code and you can quickly pick up
-the conventions they use such as `do_` functions do the work, `sys_` and `SYSCALL_DEFINE` help you find where syscalls enter, and `__` functions are internal functions that implement all the logic and get called once all permission checks are done.
+```c
+static vm_fault_t __handle_mm_fault(struct vm_area_struct *vma,
+		unsigned long address, unsigned int flags)
+{
+```
+
+Are you getting a hang of it? 
+The high quality kernel code makes it easy to explore and pick up their naming conventions.
+For example, `do_` functions do the work, `sys_` and `SYSCALL_DEFINE` help you find where syscalls enter, and `__` functions are internal functions that implement all the logic and get called once all permission checks are done.
 
 Reading unfamiliar code is difficult, but you can follow the same process we have been using: recursively explore function definitions until you understand what the acronyms are, what functions do, and what the jargon means in context.
 
-You will realize these function calls are not relevant. They have to do with unrelated unhappy paths that can get hit on a page fault. This code walks and allocates the multi-level page table.
+Going back to `__handle_mm_fault`, you will realize these function calls are not relevant. They have to do with unrelated unhappy paths that can get hit on a page fault. This code walks and allocates the multi-level page table.
 
-⟶ `handle_pte_fault` https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L5856
+⟶ [`handle_pte_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L5856)
+
+```c
+static vm_fault_t handle_pte_fault(struct vm_fault *vmf)
+{
+ [...]
+
+	if (!vmf->pte)
+		return do_pte_missing(vmf);
+
+	if (!pte_present(vmf->orig_pte))
+		return do_swap_page(vmf);
+
+	if (pte_protnone(vmf->orig_pte) && vma_is_accessible(vmf->vma))
+		return do_numa_page(vmf);
+```
+
 now the fault must get handled. The backing memory must become valid before the OS can return to the faulted program.
+
 This function does these steps
-```chatgpt
+
 Overview of Execution Flow
 
-    Check if the Page Middle Directory (PMD) is present.
-    Get or allocate a Page Table Entry (PTE).
+- Check if the Page Middle Directory (PMD) is present.
+  - If the Page Middle Directory (PMD) entry is missing, it means there is no page table yet.
+  If the PTE is empty (`pte_none()`), then the page is not allocated yet, so we will handle it as a missing page. 
+- Get or allocate a Page Table Entry (PTE).
     Determine the type of fault and handle it accordingly:
-        Page is missing → Allocate a new page (do_pte_missing()).
-        Page is swapped out → Swap it back in (do_swap_page()).
-        Page migration/NUMA fault → Handle it (do_numa_page()).
-        Write protection fault → Handle copy-on-write (COW) (do_wp_page()).
-        Otherwise, mark the page as accessed and dirty if needed.
-```
-```
-If the Page Middle Directory (PMD) entry is missing, it means there’s no page table yet.
-If the PTE is empty (pte_none()), then the page is not allocated yet, so we will handle it as a missing page. 
+  - Page is missing → Allocate a new page (`do_pte_missing()`).
+  - Page is swapped out → Swap it back in (`do_swap_page()`).
+  - Page migration/NUMA fault → Handle it (`do_numa_page()`).
+  - Write protection fault → Handle copy-on-write (COW) (`do_wp_page()`).
+  - Otherwise, mark the page as accessed and dirty if needed.
 
-```
-
-```
-Execution Path to Disk Access
 
 When the faulted page is missing or swapped out, the execution path continues as follows:
 
-    Page is missing → do_pte_missing()
-        If the mapping is anonymous, a new page is allocated.
-        If the mapping is file-backed, the function calls filemap_fault() to fetch data from disk.
+- Page is missing → do_pte_missing()
+  - If the mapping is anonymous, a new page is allocated.
+  - If the mapping is file-backed, the function calls filemap_fault() to fetch data from disk.
 
-    Page is swapped out → do_swap_page()
-        Reads the page from swap storage.
-        Inserts it back into the process’s address space.
+- File-backed page → filemap_fault()
+  - If the page is not in memory, it requests disk access via the block layer.
 
-    File-backed page → filemap_fault()
-        If the page is not in memory, it requests disk access via the block layer.
+- Disk access happens via the filesystem & block layer
+  - The requested page is fetched from disk into the page cache.
+    Once loaded, the page is mapped and execution continues.
 
-    Disk access happens via the filesystem & block layer
-        The requested page is fetched from disk into the page cache.
-        Once loaded, the page is mapped and execution continues.
-```
+
 ⟶ We fall into [`do_pte_missing`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L4053) because the page for this mmap has not been created nor has the file been loaded. 
 
-This page is not a normal stack or heap page, so we need to do work to load the file. We fall into `do_fault`
+This page is not a normal stack or heap page, so we need to do work to load the file. 
+
 ⟶ [`do_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L5507)
 
 The code branches on the types of faults
@@ -730,97 +954,71 @@ Although we have hit a dead end, applying the same exploration tricks gets us to
 
 Let's update our snapshot of our current understanding.
 
-```chatgpt
-How Data is Fetched from Disk
+#### Summary of Execution Path
 
-If the requested page is not in the page cache, execution proceeds as follows:
+0. The kernel walks the page table in `__handle_mm_fault()`. This generates a page fault.
+1. A missing file-backed page triggers `handle_pte_fault()`.
+1. It calls `do_pte_missing()`, which routes to do_fault().
+1. `do_fault()` identifies the fault as a read fault and calls `do_read_fault()`.
+1. This invokes `vma->vm_ops->fault()`, which for files is `filemap_fault()`.
+1. `filemap_fault()` checks if the page is in the page cache.
+  - If present → Map it into the process and return.
+  - If missing → Request disk I/O via the block layer[^2].
+6. The page is read from disk into the page cache.
+1. The process blocks while the page is mapped, and execution resumes.
 
-    block_page_mkwrite() or ext4_filemap_fault() is called, depending on the filesystem.
-    The page is checked in the page cache:
-        If present, it is mapped into the process.
-        If not present, the function requests a disk read via the block I/O layer.
-    The request goes through the I/O scheduler and block device driver.
-    The disk fetches the page into the page cache.
-    The page is marked present, and the fault handling completes.
-
-Summary of Execution Path
-
-    A missing file-backed page triggers handle_pte_fault().
-    It calls do_pte_missing(), which routes to do_fault().
-    do_fault() identifies the fault as a read fault and calls do_read_fault().
-    This invokes vma->vm_ops->fault(), which for files is filemap_fault().
-    filemap_fault() checks if the page is in the page cache.
-        If present → Map it into the process and return.
-        If missing → Request disk I/O via the block layer.
-    The page is read from disk into the page cache.
-    The page is mapped, and execution resumes.
-```
-
-This looks much more precise than before.
-
-
+This looks much more precise than before!
 We can continue recursively unfolding function defintions. There is a call to `filemap_get_folio` which returns a `folio` type. The type's comment indicates something interesting. 
 
-[`folio`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/include/linux/mm_types.h#L324)
+> [`folio`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/include/linux/mm_types.h#L324)
+> 
+> Both the filesystem function and this function mention a "page cache"
+> ``` 
+>  * A folio is a physically, virtually and logically contiguous set
+>  * of bytes.  It is a power-of-two in size, and it is aligned to that
+>  * same power-of-two.  It is at least as large as %PAGE_SIZE.  If it is
+>  * in the page cache, it is at a file offset which is a multiple of that
+>  * power-of-two.
+> ```
 
-Both the filesystem function and this function mntions a "page cache"
-``` 
- * A folio is a physically, virtually and logically contiguous set
- * of bytes.  It is a power-of-two in size, and it is aligned to that
- * same power-of-two.  It is at least as large as %PAGE_SIZE.  If it is
- * in the page cache, it is at a file offset which is a multiple of that
- * power-of-two.
-```
-
-A `folio` is a reference counted page cache entry. We are loading a new file for the first time, so this won't be in the page cache.
+A `folio` is a reference counted page cache entry. We are loading a new file for the first time, so this page will not be in the page cache.
 
 
-Or will it? What file are we loading again? We are loading libc. Effectively every program is using libc, so this file will surely be in memory already. Alas, this file is being used by other processes, so we cannot reuse the file. Or can we? Let's look back at the syscall we are executing in the first place.
+Or will it?
 
+What file are we loading again? We are loading libc. Effectively, every program is using libc. This file will surely be in memory already. Alas, this file is being used by other processes, so we cannot reuse the file.
+
+Or can we?
+
+Let's look back at the syscall we are executing in the first place.
 Take a look at the flags. We only want to execute libc, so actually every program is going to get the same read-only copy of this physical memory mapped into their virtual address spaces.
 
 This is magic. There was no coordination between the programs reading this same file. No special mechanisms are being used in the kernel. This is all the same ideas of virtual memory (which uses demand paging) working in harmony to make dynamic library loading work. 
 
 
-
-
-```chatgpt
-Tracing to Disk Access
-
 Now, let's follow the path when a file-backed page is missing and needs to be read from disk.
 
-    handle_pte_fault()
-        If the page is not present, it calls do_fault().
+> Hardware tries to access an uninitialized page
+> 
+> ⟶ `handle_pte_fault()`: If the page is not present, it calls do_fault().
+> 
+> ⟶ `do_fault()`: If the mapping is from a file, it calls filemap_fault().
+> 
+> ⟶ `filemap_fault()`: This function tries to load the missing page from disk. It calls page_cache_read() if the page is not already cached.
+> 
+> ⟶ `page_cache_read()` Reads the page from the filesystem's page cache.
+> If the page is not cached, it requests disk access via the block layer.
 
-    do_fault()
-        If the mapping is from a file, it calls filemap_fault().
+#### Resources
 
-    filemap_fault()
-        This function tries to load the missing page from disk.
-        It calls page_cache_read() if the page is not already cached.
+For more details on the exact actions to read from disk.
+https://www.cs.cornell.edu/courses/cs4410/2021fa/assets/material/lecture24_blk_layer.pdf
 
-    page_cache_read()
-        Reads the page from the filesystem's page cache.
-        If the page is not cached, it requests disk access via the block layer.
-
-    Block Layer → Disk
-        The block layer processes the request and fetches the data from the disk into RAM.
-
-    Page is Inserted into Memory
-        Once loaded, the page is mapped into the process's address space.
-
-Final Summary
-
-When a page fault occurs:
-
-    The kernel walks the page table in __handle_mm_fault().
-    If the page is missing, handle_pte_fault() is called.
-    For file-backed pages, filemap_fault() is invoked.
-    The filesystem attempts to retrieve the page, possibly reading it from disk.
-    The block layer fetches the data from storage.
-    The page is mapped, and execution resumes.
-```
-
+Additional resources:
+[An Introduction to the Linux Kernel Block I/O Stack](https://chemnitzer.linux-tage.de/2021/media/programm/folien/165.pdf)
+[How the Linux VFS, block layer, and device drivers fit together](http://blog.vmsplice.net/2020/04/how-linux-vfs-block-layer-and-device.html)
+[Linux VFS and Block Layers](https://devarea.com/wp-content/uploads/2017/10/Linux-VFS-and-Block.pdf)
+https://www.oreilly.com/library/view/understanding-the-linux/0596005652/ch14s02.html
 
 ### "It's for the pedagogy" [amy]
 
@@ -855,6 +1053,10 @@ Think about these for yourself. Can you write a C program to test your mental mo
 - Can you have multiple versions of the same library installed?
 - Can you explain why the `hello_world.c` program returns `13`? Hint: what does the `void` keyword mean? Where are return values stored?
 - Remaining questions: Why does a simple addition program still load libc? Hint try looking at the output of strace. What is the last system call called by the program?
+- Advanced: can you figure out what dynamic library an address belongs to in the virtual address space of a program on your computer?
+`$ cat /proc/$(pidof binary_name)/maps`. What is the program being run? You should be able to tell from the sections.
+
+You now have all the tools to learn anything you can possibly want. To retain this knowledge, you must exercise it. Embark on your personal journey of Linux spelunking and discover what happens when you start running a program with the `exec` syscall. You can find a sample solution in the ["The `exec` Functions"](https://www.cs.utexas.edu/~rossbach/cs380p/papers/ulk3.pdf#page=846&zoom=auto,27,416) section of *Understanding the Linux Kernel*.
 
 
 
@@ -881,12 +1083,45 @@ I hope you can appreciate the beauty of the ridiculous world we live in. All it 
 - [Dynamic linker wiki](https://en.wikipedia.org/wiki/Dynamic_linker)
 - [`mmap` wiki](https://en.wikipedia.org/wiki/Mmap)
 - [How statically linked programs run on Linux (and how you get from libc to the start symbol)](https://eli.thegreenplace.net/2012/08/13/how-statically-linked-programs-run-on-linux)
+- http://s.eresi-project.org/inc/articles/elf-rtld.txt
+- [GOT and PLT for pwning](https://systemoverlord.com/2017/03/19/got-and-plt-for-pwning.html)
+- `man ld.so`: Describes in detail all the places dynamic libraries come from and how you indicate what gets loaded.
+  - `ldd` trivia: it has arbitrary code execution
+- Try compiling some files and disassmbling them. Here are some flags to make it more readable. `objdump --disassemble=main  --no-show-raw-insn --visualize-jumps --disassembler-color=on a.out | less`
+- ["Libraries" part of *Understanding the Linux Kernel, 3rd Edition*](https://www.cs.utexas.edu/~rossbach/cs380p/papers/ulk3.pdf#page=834&zoom=auto,27,390)
+
 
 The objective is curiosity maximization.
 
-I tried to make the logical steps explicit. If anything was unclear, please send me an email or leave a comment. When you are debugging for real, you should reach directly to the best tool for the job instead of the winding path I took. For example, I used `vim` to open files just to show that binary is not scary. You would never look at a binary in a normal text editor like vim -- reach directly for `objdump` or `readelf`.
+I tried to make the logical steps explicit. If anything was unclear, please send me an email or leave a comment. When you are debugging for real, you should reach directly to the best tool for the job instead of the winding path I took. For example, I used `vim` to open files just to show that binary is not scary. You would never look at a binary in a normal text editor like vim -- reach directly for `objdump` or `readelf`. If high level tools don't work, then you can use a hex viewer. 
+
+Another much faster path to figuring out what a program does is to use a disassembler. We were manually going through the process of a small part of what disassemblers can automatically do for us.
+This would have shown what `hello_world.c` is actually doing as something like this
+
+```c
+function main {
+  puts("Hello world!");
+  exit(0x0);
+  return;
+}
+```
+
+Of course, there is a lot more code running. You can use a full-fat disassembler such as Ghidra. This [dogbolt web disassembly](https://dogbolt.org/?id=8f1e28f5-3bfc-4d41-8be2-82c12f54487f) of a hello world program is enough to get an idea of what the output looks like.
 
 Footnote:
 
 Nachos is confusing because semantics do not quite match linux
 confused the semantics of mmap and readVM/writeVM.
+
+[^1]: footnote: path to finding this is using this post https://stackoverflow.com/questions/14542348/how-to-find-a-definition-of-a-specific-syscall-in-linux-sources and then use regex "." syntax to find the definition of mmap
+[^2]: How Data is Fetched from Disk
+
+If the requested page is not in the page cache, execution proceeds as follows:
+
+- `block_page_mkwrite()` or `ext4_filemap_fault()` is called, depending on the filesystem.
+- The page is checked in the page cache:
+  - present → mapped into the process.
+  - not present → function requests a disk read via the block I/O layer.
+- The request goes through the I/O scheduler and block device driver.
+- The disk fetches the page into the page cache.
+- The page is marked present, and the fault handling completes.
