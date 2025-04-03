@@ -622,6 +622,17 @@ It appears this file doesn't know where these functions are located. The rabbit 
 
 ## Go Deeper, Brother
 
+TODO: learn pic vs got. I still do not fully know what is happening on a lazy resolution. what is RELRO? how can it be read only but done at runtime
+    The PLT contains stub entries that facilitate calling functions defined in other libraries (like libc).
+
+    The GOT holds the actual addresses for these functions. Initially, the GOT entries may point to a stub in the PLT that will invoke the dynamic linker for resolution.
+
+  What does this mean
+
+    For lazy binding, the PLT stubs call into the dynamic linker’s code, which is already part of the process’s address space and does not require writing to the now-read-only GOT for subsequent calls (the GOT was updated earlier or only the parts not marked read-only are used).
+
+  Need PIC to be in many addr spaces at different places
+
 We can use `gdb` to gain confidence in (or to invalidate) our new theory.
 We know the address of our `plt`, so let's print out that memory and see if it got loaded even before our code runs.
 
@@ -1245,6 +1256,7 @@ Additional resources:
 [How the Linux VFS, block layer, and device drivers fit together](http://blog.vmsplice.net/2020/04/how-linux-vfs-block-layer-and-device.html)
 [Linux VFS and Block Layers](https://devarea.com/wp-content/uploads/2017/10/Linux-VFS-and-Block.pdf)
 https://www.oreilly.com/library/view/understanding-the-linux/0596005652/ch14s02.html
+[kernel vfs docs](https://www.kernel.org/doc/Documentation/filesystems/vfs.txt)
 
 ### It's for the pedagogy [^3]
 
@@ -1313,7 +1325,7 @@ I hope you can appreciate the beauty of the ridiculous world we live in. All it 
   - `ldd` trivia: it has arbitrary code execution
 - Try compiling some files and disassmbling them. Here are some flags to make it more readable. `objdump --disassemble=main  --no-show-raw-insn --visualize-jumps --disassembler-color=on a.out | less`
 - ["Libraries" part of *Understanding the Linux Kernel, 3rd Edition*](https://www.cs.utexas.edu/~rossbach/cs380p/papers/ulk3.pdf#page=834&zoom=auto,27,390)
-
+- [a similar blog post](https://sysadvent.blogspot.com/2010/12/day-15-down-ls-rabbit-hole.html) for tracing `ls`
 
 The objective is curiosity maximization.
 
