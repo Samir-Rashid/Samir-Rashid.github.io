@@ -14,12 +14,12 @@ header:
 
 <h4 markdown="1">
 
-This post is a reprint of the [original post](http://tuas.ucsd.edu/blog/10-reasons/) I wrote on the Triton UAS blog. This post has been edited to add `COMMENTARY` blocks with my own commentary.
+This post is a reprint of the [original post](http://tritonuas.com/blog/10-reasons/) I wrote on the Triton UAS blog. This post has been edited to add `COMMENTARY` blocks with my own commentary.
 </h4>
 
 <h4 markdown="1">
 
-[Triton UAS](http://tuas.ucsd.edu/) is a club at UC San Diego which makes Unmanned Aerial Systems, aka autonomous planes.
+[Triton UAS](http://tritonuas.com/) is a club at UC San Diego which makes Unmanned Aerial Systems, aka autonomous planes.
 </h4>
 </div>
 
@@ -62,7 +62,7 @@ I first came across TUAS during Zoom University. There was an online event where
 
 ## 2. Making something cool
 
-I love that we build a real system. It is no comparison that an autonomous flying plane is cooler than any class project. Some of the [things we do](https://tuas.ucsd.edu/project/) have never been done, by students or professionals. Autonomous vehicles are still a largely unsolved problem — you cannot search for existing solutions to the problems we face. Building planes is tough, and moreso given our time and monetary constraints.
+I love that we build a real system. It is no comparison that an autonomous flying plane is cooler than any class project. Some of the [things we do](https://tritonuas.com/project/) have never been done, by students or professionals. Autonomous vehicles are still a largely unsolved problem — you cannot search for existing solutions to the problems we face. Building planes is tough, and moreso given our time and monetary constraints.
 
 However, we rise to the challenge. Triton UAS is a team effort. It is amazing to create something that I could never do on my own.
 
@@ -151,7 +151,7 @@ If it has to do with power, general electronics, or microcontrollers and the sof
 **Business**: 🕴
 </summary>
 
-We run the finances and logistics for the team. Business is charge of corporate sponsorships, running fundraisers, and managing expenses. We also manage external communication through this [blog](https://tuas.ucsd.edu/blog/), our [LinkedIn](https://www.linkedin.com/company/tritonuas), and [Instagram](https://www.instagram.com/tritonuas/). We also make awesome merch and bring the team together with our epic socials like the beach day and TUAS Olympics.
+We run the finances and logistics for the team. Business is charge of corporate sponsorships, running fundraisers, and managing expenses. We also manage external communication through this [blog](https://tritonuas.com/blog/), our [LinkedIn](https://www.linkedin.com/company/tritonuas), and [Instagram](https://www.instagram.com/tritonuas/). We also make awesome merch and bring the team together with our epic socials like the beach day and TUAS Olympics.
 </details>
 
 ---
@@ -186,7 +186,7 @@ There is **no** mandatory attendance policy. There is **no** required previous e
 
 The more you put into the club, the more you get back. We understand people have other obligations, especially with the gruelling quarter system. We just ask that members communicate with us. The great part is that you get to "own" your task and get to make decisions yourself.
 
-We do not just say we are open to everyone, we actually are. You can check out all our [meeting times](https://tuas.ucsd.edu/calendar/) on our website, you can join our Discord server, or meet our members at campus outreach events (library walk tabling, [EOTG](https://tesc.ucsd.edu/eotg)). We want to help the greater engineering community outside of UCSD. We visit San Diego fairs and schools, publish documentation and tutorials publicly on our wiki, publish a [whitepaper](https://tuas.ucsd.edu/blog/blog-post-21/) of our work, and license our code as Free Software.
+We do not just say we are open to everyone, we actually are. You can check out all our [meeting times](https://tritonuas.com/calendar/) on our website, you can join our Discord server, or meet our members at campus outreach events (library walk tabling, [EOTG](https://tesc.ucsd.edu/eotg)). We want to help the greater engineering community outside of UCSD. We visit San Diego fairs and schools, publish documentation and tutorials publicly on our wiki, publish a [whitepaper](https://tritonuas.com/blog/blog-post-21/) of our work, and license our code as Free Software.
 
 <div class="commentary-author">Commentary</div>
 <div class="commentary-body">
