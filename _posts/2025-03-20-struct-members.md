@@ -70,6 +70,7 @@ The word "word" is misleading in modern machines. For x86, a "word" is still 32 
 
 C's reign is falling. In Rust, you do not deal with raw pointer values. The compiler is free to reorder struct members as it wills. In fact, it can even completely change the representation of a type in memory. 
 ** insert leon/rust book FFI example **
+niche optimization https://jpfennell.com/posts/enum-type-size/
 
 
 # Another wrinkle

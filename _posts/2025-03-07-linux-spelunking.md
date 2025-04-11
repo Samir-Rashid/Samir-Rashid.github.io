@@ -77,8 +77,9 @@ Instead, we can write a minimal `hello_world.c` program to test with. What happe
 ```c
 #include <stdio.h>
 
-void main(void) {
+int main(void) {
         printf("hello world!\n");
+        return 0;
 }
 
 ```
@@ -397,9 +398,10 @@ Binary spelunking is the perfect way to see what the CPU is running in order to 
   40107f:       00
 ```
 
-TODO: Trace the assembly
-
-<TODO: diagram, note puts vs printf>
+> Note: `puts` vs `printf`
+> 
+> `puts` is simpler than `printf` because it does not do string formatting (ex: `%d`).
+> If you are printing a fixed literal string, then the compiler will probably make a call to the more efficient `puts` function instead.
 
 One tip is to try doing the simplest possible test when trying a new strategy. Minimizing the experiment ensures we do not get overloaded with unnecessary context.
 Let's first try out this new tool on our `hello_world` binary.
@@ -411,12 +413,10 @@ $ objdump -D ./a.out
 
 We must be persistent. Making new systems wouldn't be fun if it was easy. By the end, I promise your appreciation for the immense scope of real systems will grow.
 
-There are many flags to `objdump`, which you can find on the `man` page. We might need to try some random flags before finding something useful. Again, the goal is to both induct new hypotheses on what is happening and deduct possibilities that are definitely not valid explanations for the behavior we are seeing.
+There are many flags to `objdump`, which you can find on the `man` page. We might need to try some random flags before finding something useful. Again, the goal is to both induct new hypotheses on what is happening and deduct possibilities that are definitely not valid explanations for the behavior we are seeing [^4].
 
-> TODO: diagram of cutting search space in half (maybe from that prof howto debug post)
 
-![asking chatgpt to explain the syscalls](/images/spelunking/debug_space.png)
-
+![diagram of cutting search space in half](/images/spelunking/debug_space2.png){:style="display:block; margin-left:auto; margin-right:auto" width="60%" }
 
 ```sh
 objdump -p ./a.out
@@ -551,11 +551,11 @@ Why would we not know where `printf` is? We must remember this function is from 
 
 We have debunked the theory that `printf` is a normal function call. Then what is it? You will be unable to find a definition of `printf` in the binary, regardless of how hard you look.
 
-> Student: how can I be sure `printf` is *actually* a part of libc? You're just some rando on the internet, not my teacher. :clown:
+> Student: how can I be sure `printf` is *actually* a part of libc? You're just some rando on the internet, not my teacher. :dizzy_face:
 
 Spoken like a true skeptic. When I run a binary, all the OS does is go to `main()` and then start executing instructions. My entire binary has been printed, so something is wrong with `objdump`.
 
-Alas, another twist in the road. First one nitpick -- `main()` is not the first thing that runs. The dump has a `_start` symbol which is the entrypoint that `libc` uses to call `main`. (TODO: find execve in kernel and look for _start.) Yes, it is the case that we have the whole binary. Think back to when we opened `a.out` in `vim`. Did we see something in addition to some uninterpretable binary? Hint: at the start and end of the file.
+Alas, another twist in the road. First one nitpick -- `main()` is not the first thing that runs. The dump has a `_start` symbol which is the entrypoint that `libc` uses to call `main`. Yes, it is the case that we have the whole binary. Think back to when we opened `a.out` in `vim`. Did we see something in addition to some uninterpretable binary? Hint: at the start and end of the file.
 
 ### Return of the Elves
 
@@ -604,7 +604,14 @@ close(4)                                = 0
 If you roll up your sleeves and do some good, old-fashioned documentation sleuthing, you can understand what this previously overwhelming `strace` output means. And we also know that our LLM above was speaking confidently about things it doesn't know. Although it looked believable, it got many facts completely wrong.
 Instead of LLMs, let's apply our willpower to see what these straced lines mean.
 
-*TODO: summary of the syscalls, steal from https://www.maizure.org/projects/printf/dynamic_strace_walkthrough.txt* 
+1. `openat(libc.so.6)`: open the `libc` executable file on disk
+2. `read`: read `libc.so.6` from disk into memory
+3. `pread64`: continue reading from where it left off 
+4. `mmap`: map the library into the process address space as readable and executable, but not writable. Allocates some writable memory, likely as scratch space.
+5. `close`: close the file descriptor of the library
+
+
+`man 2` has all the info we need. You can see more detail in [now it's your turn](#now-its-your-turn).
 
 > Student: I'm still not satisfied. We never saw any reference to any logic of looking for `libc` in our `objdump`.
 > Instructor: That's the spirit. Do you have any ideas?
@@ -633,6 +640,8 @@ TODO: learn pic vs got. I still do not fully know what is happening on a lazy re
 
   Need PIC to be in many addr spaces at different places
 
+> Instructor: That's great you know that. But what is it *actually doing*?
+
 We can use `gdb` to gain confidence in (or to invalidate) our new theory.
 We know the address of our `plt`, so let's print out that memory and see if it got loaded even before our code runs.
 
@@ -640,21 +649,52 @@ Cool. And we can confirm this points to the area of virtual memory which `strace
 
 Armed with this knowledge, we can both understand the world and bend it to our will. Let's use `gdb` to change where the function points. If I write a second function and recompile, I can modify execution from printf to my own function! How does it feel to be able to grok the system and control its behavior?
 
-TODO: disperse:
-> Instructor: That's great you know that. But what is it *actually doing*?
-
 We learned how processes are loaded and how libraries are dynamically loaded. We even know how to manipulate a running program.
 The "GOT and PLT for pwning" source at the bottom explains how to pwn the PLT/GOT. 
 
-[[[ TODO: got/plt diagram ]]]
+### Tracing PLT and GOT
+
 
 ```c
+#include <stdio.h>
+
+int main() {
+        printf("hello world!\n");
+        printf("hello world!\n");
+        return 0;
+}
+```
+
+<!-- nix-shell -p gcc gdb usl -->
+```bash
+$ gcc -fno-pie -no-pie -g explore_plt.c
+$ gdb a.out
+(gdb) b explore_plt.c:4
+Breakpoint 1 at 0x401040: file explore_plt.c, line 4.
+(gdb) b explore_plt.c:5
+Breakpoint 2 at 0x40104e: file explore_plt.c, line 5.
+(gdb) r
+```
+
+```c
+(gdb) disass main
+Dump of assembler code for function main:
+   0x0000000000401050 <+0>:     sub    $0x8,%rsp
+   0x0000000000401054 <+4>:     mov    $0x402000,%edi
+   0x0000000000401059 <+9>:     call   0x401020 <puts@plt>
+   0x000000000040105e <+14>:    mov    $0x402000,%edi
+   0x0000000000401063 <+19>:    add    $0x8,%rsp
+   0x0000000000401067 <+23>:    jmp    0x401020 <puts@plt>
+End of assembler dump.
 (gdb) disass 'puts@plt'
 Dump of assembler code for function puts@plt:
-   0x0000000000401030 <+0>:     jmp    *0x2faa(%rip)        # 0x403fe0 <puts@got.plt>
+   0x0000000000401030 <+0>:     jmp    *0x2fb2(%rip)        # 0x403fe8 <puts@got.plt>
    0x0000000000401036 <+6>:     push   $0x0
    0x000000000040103b <+11>:    jmp    0x401020
 End of assembler dump.
+(gdb) p/x *(void**)0x403fe8
+$1 = ...
+# What does this line print at different points in the function?
 ```
 
 That line is a jump which follows a pointer to the jump location.
@@ -670,6 +710,14 @@ The pwning blog post explains more, but this line makes the table entries read o
 In context of our program, this means that the entire GOT got resolved by the loader and then marked as read only for security. Other programs or OSes may not resolve every library function immediately.
 It can be more efficient to lazily load the entries.
 These function pointers in the table could point to code which will resolve the address on-demand for future library calls.
+
+The flow is that the assembly points to the PLT which has a shim that does the GOT lookup. On the happy path this will lead directly to the library code. On the first use of a library function, the execution falls through using the red path, which asks the loader to locate the library function.
+
+![](/images/spelunking/plt_trace.drawio.png)
+
+In terms of the process' memory layout, the GOT entries initialize to pointing the the loader executable code to the location of the instructions for the library function.
+
+![](/images/spelunking/plt_memory.drawio.png){:style="display:block; margin-left:auto; margin-right:auto" width="60%" }
 
 ## Knowledge Check
 
@@ -824,6 +872,11 @@ If we look carefully this time at the binary and readelf, there is this file pat
 [Requesting program interpreter: /nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/ld-linux-x86-64.so.2]
 ```
 
+> Aside: What is the loader doing to reach the start of the program?
+> 
+> "Copies" code and data from an executable file on disk into memory. The loader starts execution of the program at the entrypoint specified in the ELF header.
+> The address of the first instruction is usually the start of `.text`, which contains a `_start` symbol that runs some CPU specific assembly. This architecture-specific assembly sets up memory and any bookkeeping that need to be done before starting `main()` by calling `__libc_start_main` [^5].
+
 If you have seen `bash` or `python` scripts, this is similar to the `#!` shebang placed at the start of a file. 
 This file path leads to a loader program which does the work of loading our libraries.
 
@@ -835,9 +888,14 @@ Programs are files. Code is just binary wrapped with some ELF headers sitting on
 
 If we zoom out, what was the point of dynamically loading in the first place. We have observed most programs are dynamically loading `libc`. But it is all just code in the end, why not just include it in the same file? Indeed, this would have less runtime overhead since you don't have to do any loading. 
 
-{ look how big the statically linked version of this is}
+```c
+$ ls -lah hello_world*
+-rw-r--r-- 1 mod users   64 Apr  3 01:20 hello_world.c
+-rwxr-xr-x 1 mod users  16K Apr 11 00:24 hello_world.dynamic
+-rwxr-xr-x 1 mod users  22K Apr 11 00:24 hello_world.static
+```
 
-Dynamic linking saves a lot os disk space by deduplicating the code for `libc` functions like `printf`. Libraries save disk space and make updating libraries as easy as swapping a single file. But, if we load many programs, then we still have the issue that these `libc` functions are now duplicated in the memory of every program.
+Dynamic linking saves a lot of disk space by deduplicating the code for `libc` functions like `printf`. Libraries save disk space and make updating libraries as easy as swapping a single file. But, if we load many programs, then we still have the issue that these `libc` functions are now duplicated in the memory of every program.
 How would modify library loading to support sharing the same physical memory for every process?
 
 > Instructor: Neat. How would you do that if you were designing it?
@@ -854,6 +912,16 @@ Consider that loading libraries simply puts bytes into memory. All applications 
 What if we could load `libc` once and then share this same physical memory.
 
 Let's dive into what `mmap` is doing to hypothesize how to add support for sharing physical memory.
+
+> Student: Hoooold on. This doesn't make any sense. The libraries may need to be loaded into a different place in memory
+> for each process depending on the libraries they specify and the process' memory layout. It is impossible for a program
+> to be at different points in memory because the addresses in the instructions will be wrong.
+>
+> Instructor: Very thoughtful! The libraries are instructions, so any pointers you create will be in a different stack for that process. That means that pointers should be correct within each individual process. And remember, even if the library is loaded in a different place, our program can locate the libraries by looking up the symbol in the PLT/GOT. This solves the relocation problem from the perspective of our user program. However, the libraries have the challenge that they cannot rely on using addresses in their code because they do not know where they will get loaded in memory. For symbols that call into other libraries it is easy as we can reuse the same idea of symbol to address lookup tables.
+>
+> Recall in assembly you need to specify a destination address to jump to. Instead of using absolute addresses, engineers
+> needed to add compiler support for [Position-Independent Code/Executables](https://en.wikipedia.org/wiki/Position-independent_code). This feature ensures the output binary only uses relative addresses that will work wherever the program gets loaded.
+> Here is a concrete [example exercise](https://yurichev.com/news/20211015_PIC/) that shows the conversion of a normal assembly to position independent.
 
 ### Gimme a man
 
@@ -1275,10 +1343,6 @@ I like this approach for figuring this out because it works in general. Particul
 the better approach is probably to go directly to kernel documentation and to start reading the
 source code.
 
-TODO: objdump the binary to find the label and table
-TODO: try mapping things to the kernel
-TODO: dump elf headers
-
 # What we didn't cover
 
 Think about these for yourself. Can you write a C program to test your mental model? Can you spelunk your kernel to find out? Remember, just because LLMs act authoritative, it does not mean they know anything.
@@ -1309,6 +1373,9 @@ Happy exploring.
 Pierre Habouzit
 
 Think about what it means to load a program. What is a program? (a file) What is a library? (a file) Are programs any different than normal files? (yes, executable. but still just bytes on disk) How does a program modify it's own addr space with a file? (use read() and open() the file, but even better to use mmap since it will handle all the mapping for you) okay now we can load for one program, how to share? what mechanisms need to be added? (nothing, sharing is totally transparent via file cache)
+
+
+we see the kernel does not do anything on its own. everything is on behalf of a request from the process
 -->
 
 This post was inspired by this video on linux signals. It's one of the best videos I've ever seen. I rewatch it every few months to remind myself how beautiful it is to be able to understand these precise and complex beasts of machines we use.
@@ -1352,6 +1419,8 @@ confused the semantics of mmap and readVM/writeVM.
 [^1]: footnote: path to finding this is using this post https://stackoverflow.com/questions/14542348/how-to-find-a-definition-of-a-specific-syscall-in-linux-sources and then use regex "." syntax to find the definition of mmap
 [^2]: How Data is Fetched from Disk
 [^3]:[The true meaning of teaching](https://www.youtube.com/watch?v=bYv_Jcd27Gc)
+[^4]: A good POV of the [debugging mental model](https://blog.regehr.org/archives/199)
+[^5]: [Great lecture explaining PLT and GOT](https://www.youtube.com/watch?v=Ss2e6JauS0Y)
 
 If the requested page is not in the page cache, execution proceeds as follows:
 
