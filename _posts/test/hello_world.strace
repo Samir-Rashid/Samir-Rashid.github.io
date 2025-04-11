@@ -1,0 +1,45 @@
+execve("./a.out", ["./a.out"], 0x7ffc3c8056d0 /* 158 vars */) = 0
+brk(NULL)                               = 0x33d6f000
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f5e57473000
+access("/etc/ld-nix.so.preload", R_OK)  = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v4/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+newfstatat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v4/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v3/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+newfstatat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v3/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v2/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+newfstatat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v2/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+newfstatat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v4/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+newfstatat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v4/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v3/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+newfstatat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v3/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v2/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+newfstatat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v2/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = 4
+read(4, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0@\244\2\0\0\0\0\0"..., 832) = 832
+pread64(4, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+fstat(4, {st_mode=S_IFREG|0555, st_size=2335712, ...}) = 0
+pread64(4, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+mmap(NULL, 2067928, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 4, 0) = 0x7f5e5727a000
+mmap(0x7f5e572a2000, 1474560, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 4, 0x28000) = 0x7f5e572a2000
+mmap(0x7f5e5740a000, 352256, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 4, 0x190000) = 0x7f5e5740a000
+mmap(0x7f5e57460000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 4, 0x1e5000) = 0x7f5e57460000
+mmap(0x7f5e57466000, 52696, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f5e57466000
+close(4)                                = 0
+mmap(NULL, 12288, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f5e57277000
+arch_prctl(ARCH_SET_FS, 0x7f5e57277740) = 0
+set_tid_address(0x7f5e57277a10)         = 467906
+set_robust_list(0x7f5e57277a20, 24)     = 0
+rseq(0x7f5e57278060, 0x20, 0, 0x53053053) = 0
+mprotect(0x7f5e57460000, 16384, PROT_READ) = 0
+mprotect(0x403000, 4096, PROT_READ)     = 0
+mprotect(0x7f5e574aa000, 8192, PROT_READ) = 0
+prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=16384*1024, rlim_max=RLIM64_INFINITY}) = 0
+fstat(1, {st_mode=S_IFCHR|0620, st_rdev=makedev(0x88, 0x2), ...}) = 0
+getrandom("\xc3\xaa\x18\x11\xb5\x45\x97\x82", 8, GRND_NONBLOCK) = 8
+brk(NULL)                               = 0x33d6f000
+brk(0x33d90000)                         = 0x33d90000
+write(1, "hello world!\n", 13)          = 13
+exit_group(13)                          = ?
++++ exited with 13 +++
