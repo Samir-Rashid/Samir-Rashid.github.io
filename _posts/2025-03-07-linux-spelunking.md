@@ -13,14 +13,16 @@ TODO: writing is too informal/flowery/not simple words. verbiage review with hem
 
 TODO: really need the better code formatting like https://squidfunk.github.io/mkdocs-material/reference/code-blocks/
 
+TODO: fix why opening summary block first time jumps
+
 # Linux Spelunking: How are processes loaded? How would I figure it out?
 
 Today we journey into Linux to discover how programs are loaded.
-Building new systems requires you to understand how the current system actually works—not how it works according to the documentation.
-This post is meant for people who want to learn more about kernel internals but have been hesitating to dive in for themselves.
-I am writing the post I wish I had when starting out.
+To build new systems, you must understand how the current system actually works—not how the documentation claims it works.
+This post is meant for people who want to learn more about kernel internals but have been hesitating to dive in for themselves;
+it's the post I wish I had when starting out.
 This article aims to convince you that kernel development is not intimidating.
-We will explore how to deal with ambiguity when researching something new. You will come out with an understanding of the exact actions Linux tkes to load a realistic program. Moreover, you will learn the tools to deconstruct any large program.
+We will explore how to deal with ambiguity when researching something new. You will come out with an understanding of the exact actions Linux takes to load a realistic program. Moreover, you will learn the tools to deconstruct any large program.
 
 
 > **Goal**: How does Linux load a program?
@@ -91,9 +93,73 @@ hello world!
 
 Aha, we have solved the puzzle! The kernel starts running the instructions of `main()` and `printf` is just a function call. Spoiler alert: this is wrong. We still haven't explained what this `printf` reference is. 
 
-`strace` returns an overwhelming 45 lines of output, which confirms much more is happening.
-Of the following output, the only recognizable line is 
-`write(1, "hello world!\n", 13)          = 13`, which tells us that printing is using a `write` syscall to send the output.
+> :angry:: You said I wouldn't need any prerequisite knowledge to understand this. I don't understand these keywords. What is this weird `void` thing?
+> 
+> If you haven't seen this before, I think you can ignore it for now. It just means that the function has no input.
+
+> :confounded:: What is that `\n` after hello world?
+> 
+> Wonderful question, though you may not realize it :smile:. Simply, the `\n` asks `printf` to print a newline. Check out my [fork](/fork) post and the resources on `printf` at the end of this post to get closer to what `\n` *actually* does.
+
+In fact, if we remove all unfamiliar syntax, the program behaves the same as before.
+
+```c
+main() {
+        printf("hello world!\n");
+}
+```
+```bash
+$ gcc hello_world_skeptic.c
+$ ./a.out
+hello world!
+```
+
+This time our compiler, `gcc`, complains with a bunch of warnings:
+
+```c
+hello_world.c:1:2: warning: return type defaults to ‘int’ [-Wimplicit-int]
+    1 |  main() {
+      |  ^~~~
+hello_world.c: In function ‘main’:
+hello_world.c:2:9: warning: implicit declaration of function ‘printf’ [-Wimplicit-function-declaration]
+    2 |         printf("hello world!\n");
+      |         ^~~~~~
+hello_world.c:1:1: note: include ‘<stdio.h>’ or provide a declaration of ‘printf’
+  +++ |+#include <stdio.h>
+    1 |  main() {
+hello_world.c:2:9: warning: incompatible implicit declaration of built-in function ‘printf’ [-Wbuiltin-declaration-mismatch]
+    2 |         printf("hello world!\n");
+      |         ^~~~~~
+hello_world.c:2:9: note: include ‘<stdio.h>’ or provide a declaration of ‘printf’
+```
+
+Weird. The program runs the same, so why are we getting all these warnings?
+One line jumps out to me. `gcc` warns us **four** times about something to do with the "declaration of 'printf'".
+Before we get ahead of ourselves, allow me to fix these compiler warnings. Fixing these warnings will prevent any weird unrelated issues that interfere with our later debugging results.
+
+Following the error message `include ‘<stdio.h>’ or provide a declaration of ‘printf’` tells us precisely how to fix the error and points out the problem.
+C becomes aware of functions it can link with by using header files. Including `stdio.h` tells `gcc` about the definition of `printf`.
+
+```diff
+> #include <stdio.h>
+ 
+> int main() {
+        printf("hello world!\n");
+>       return 0;
+  }
+
+```
+
+## It's a function call
+
+I claim that `printf` is not a function call. Let's either verify or disprove this conclusion. We can run `strace` on `hello_world` and save the output to a file "hello_world.strace".
+
+```bash
+$ gcc hello_world.c
+$ strace -o hello_world.strace ./a.out
+```
+
+`strace` on this binary returns an overwhelming 45 lines of output, which confirms much more is happening.
 
 >  **Abridged output**:
 > 
@@ -164,151 +230,9 @@ Of the following output, the only recognizable line is
 > ```
 > </details>
 
-> :angry:: You said I wouldn't need any prerequisite knowledge to understand this. I don't understand these keywords. What is this weird `void` thing?
-> 
-> If you haven't seen this before, I think you can ignore it for now. It just means that the function has no input and no output.
-
-> :confounded:: What is that `\n` after hello world?
-> 
-> Wonderful question, though you may not realize it :smile:. Simply, the `\n` asks `printf` to print a newline. Check out my [fork](/fork) post and the resources on `printf` at the end of this post to get closer to what `\n` *actually* does.
-
-In fact, if we remove all unfamiliar syntax, the program behaves the same as before.
-
-```c
-main() {
-        printf("hello world!\n");
-}
-```
-```bash
-$ gcc hello_world_skeptic.c
-$ ./a.out
-hello world!
-```
-
-This time our compiler, `gcc`, complains with a bunch of warnings:
-
-```c
-hello_world.c:1:2: warning: return type defaults to ‘int’ [-Wimplicit-int]
-    1 |  main() {
-      |  ^~~~
-hello_world.c: In function ‘main’:
-hello_world.c:2:9: warning: implicit declaration of function ‘printf’ [-Wimplicit-function-declaration]
-    2 |         printf("hello world!\n");
-      |         ^~~~~~
-hello_world.c:1:1: note: include ‘<stdio.h>’ or provide a declaration of ‘printf’
-  +++ |+#include <stdio.h>
-    1 |  main() {
-hello_world.c:2:9: warning: incompatible implicit declaration of built-in function ‘printf’ [-Wbuiltin-declaration-mismatch]
-    2 |         printf("hello world!\n");
-      |         ^~~~~~
-hello_world.c:2:9: note: include ‘<stdio.h>’ or provide a declaration of ‘printf’
-```
-
-Weird. The program runs the same, so why are we getting all these warnings?
-One line jumps out to me. `gcc` warns us **four** times about something to do with the "declaration of 'printf'".
-Before we get ahead of ourselves, allow me to fix these compiler warnings. Fixing these warnings will prevent any weird unrelated issues that interfere with our later debugging results.
-
-Following the error message `include ‘<stdio.h>’ or provide a declaration of ‘printf’` tells us precisely how to fix the error and points out the problem.
-C is aware of functions it can link with using header files. Including `stdio.h` tells `gcc` about the definition of `printf`.
-
-```diff
-> #include <stdio.h>
- 
-> void main() {
-        printf("hello world!\n");
-  }
-
-```
-
-### Load "Hello {name}"
-
-> [!WARNING]
-> TODO: Need to integrate this better. May need to move later since `puts` has not been introduced yet. This becomes important when `objdump`ing, so I need to plant this hint somehow.
-
-deleted for now
-
-<!--
-We tried declaring victory on the puzzle. Can we double check our intuition matches something else. We want to confirm `printf` is a function the same as any other, so let's print something else out.
-
-```diff
-> void main(int argc, char** argv) {
->   if (argc < 2) {
->     printf("hello: error with argc\n");
->     return;
->   }
-<       printf("hello world!\n");
->       printf("hello, %s!\n", argv[1]);
-  }
-```
-
-
-Now we print out a name given to us from the command line, as so `./a.out Samir`. As we go through, I am going to reduce the handholding. Take a moment to think about whether you understand the change I just made.
-
-<details markdown="1">
-  <summary>Can you explain what argc is and why I check if it is 2? Why not 1? Why do I index 1 into argv if C arrays are zero indexed?</summary>
-> Practice looking this question up. Stack overflow is a wonderful library of questions. Try searching "what is argc and argv in C".
-
-</details>
-
--->
-
-## It's a function call
-
-Let's verify this conclusion we have reached. Let's run `strace` on `hello_world` and save the output to a file "hello_world.strace".
-
-```bash
-$ gcc hello_world.c
-$ strace -o hello_world.strace ./a.out
-```
-```c
-execve("./a.out", ["./a.out"], 0x7ffc3c8056d0 /* 158 vars */) = 0
-brk(NULL)                               = 0x33d6f000
-mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f5e57473000
-access("/etc/ld-nix.so.preload", R_OK)  = -1 ENOENT (No such file or directory)
-openat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v4/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
-newfstatat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v4/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
-openat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v3/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
-newfstatat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v3/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
-openat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v2/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
-newfstatat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/glibc-hwcaps/x86-64-v2/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
-openat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
-newfstatat(AT_FDCWD, "/nix/store/sga46w4h0l00adh433634s7kp724czvn-shell/lib/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
-openat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v4/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
-newfstatat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v4/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
-openat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v3/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
-newfstatat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v3/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
-openat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v2/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
-newfstatat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/glibc-hwcaps/x86-64-v2/", 0x7ffc1f6fbf30, 0) = -1 ENOENT (No such file or directory)
-openat(AT_FDCWD, "/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = 4
-read(4, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0@\244\2\0\0\0\0\0"..., 832) = 832
-pread64(4, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
-fstat(4, {st_mode=S_IFREG|0555, st_size=2335712, ...}) = 0
-pread64(4, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
-mmap(NULL, 2067928, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 4, 0) = 0x7f5e5727a000
-mmap(0x7f5e572a2000, 1474560, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 4, 0x28000) = 0x7f5e572a2000
-mmap(0x7f5e5740a000, 352256, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 4, 0x190000) = 0x7f5e5740a000
-mmap(0x7f5e57460000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 4, 0x1e5000) = 0x7f5e57460000
-mmap(0x7f5e57466000, 52696, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f5e57466000
-close(4)                                = 0
-mmap(NULL, 12288, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f5e57277000
-arch_prctl(ARCH_SET_FS, 0x7f5e57277740) = 0
-set_tid_address(0x7f5e57277a10)         = 467906
-set_robust_list(0x7f5e57277a20, 24)     = 0
-rseq(0x7f5e57278060, 0x20, 0, 0x53053053) = 0
-mprotect(0x7f5e57460000, 16384, PROT_READ) = 0
-mprotect(0x403000, 4096, PROT_READ)     = 0
-mprotect(0x7f5e574aa000, 8192, PROT_READ) = 0
-prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=16384*1024, rlim_max=RLIM64_INFINITY}) = 0
-fstat(1, {st_mode=S_IFCHR|0620, st_rdev=makedev(0x88, 0x2), ...}) = 0
-getrandom("\xc3\xaa\x18\x11\xb5\x45\x97\x82", 8, GRND_NONBLOCK) = 8
-brk(NULL)                               = 0x33d6f000
-brk(0x33d90000)                         = 0x33d90000
-write(1, "hello world!\n", 13)          = 13
-exit_group(13)                          = ?
-+++ exited with 13 +++
-```
-
-Oh my. Have we even gotten closer to the solution? The output has a lot of information we do not understand yet, and I do not know what data we want to look for.
+Oh my. Have we even gotten closer to the solution?
+Of the following output, the only recognizable line is `write(1, "hello world!\n", 13)          = 13`, which tells us that printing is using a `write` syscall to send the output.
+The output has a lot of information we do not understand yet, and I do not know what data we want to look for.
 On the positive side, at least the output fits on a screen now. Directly tracing the output hasn't gotten us anywhere and these syscalls still look daunting.
 
 We need to break out our debugging hats :tophat:. If we have faith that we will be able to solve this problem, then we will be able to figure out what is going on.
@@ -321,18 +245,25 @@ We live in the 21st century, so although I wouldn't trust an LLM to give the cor
 
 > Instructor: You are going down the wrong track. Let's back up.
 
-We need to take a moment to think about the approach. `strace` is a bit too hard to interpret, especially since it requires us to understand what all these syscalls are and then to fill in the blanks of what is going on.
+We need to take a moment to think about this approach. `strace` is a bit too hard to interpret, especially since it requires us to understand what all these syscalls are and then to fill in the blanks of what is going on.
 
-Maybe we should take a look at a different level of abstraction? There is nothing more we can learn from the source C file.
-It seems like we need to go deeper. Is there another file we have?
-
-> ↛ Load and trace a "simple" program
+> **Debugging Process**:
+> 
+> ↛ Load and trace a "simple" program ⟶ ❌
 >
 > ↛ Load a minimal program
 >
-> ⇝ Idea: `printf` is a function call
->
-> ⇝ dead end...?
+> > ⇝ Idea: `printf` is a function call
+> > 
+> > > ↛  check compiler output ⟶ ❌
+> > >
+> > > ↛  check `strace` output ⟶ use LLM ⟶ ❌
+> > 
+> > 
+> > ⇝ dead end...?
+
+Maybe we should take a look at a different level of abstraction? There is nothing more we can learn from the source C file.
+It seems like we need to go deeper. Is there another file we have?
 
 ## Binary spelunking
 
@@ -342,69 +273,83 @@ What is inside this `a.out` thing? I know it is a compiled binary, so this must 
 $ vim a.out
 ```
 
-Uh, that's not right. I don't think there is anything useful here to see. I do see some characters rendering correctly, but they look like nonsense. I see "ELF" and then some file paths at the start and end of this file.
-
 ![garbled vim buffer](/images/spelunking/vim_binary.png)
 
-Let's put a pin in this stuff we have seen in case it comes up later. Writing a log of what you have tried while debugging is essential to be able to keep all the relevant context in your head. What works as well as what didn't helps narrow the scope of debugging.
+Uh, that's not right. I don't think there is anything useful here to see. I do see some characters rendering correctly, but they look like nonsense. I see "ELF" and then some file paths at the start and end of this file.
 
-> ⇝ dead end...?
+Let's put a pin in this stuff we have seen in case it comes up later. Writing a log of what you have tried while debugging is essential to be able to keep all the relevant context in your head. What works, as well as what didn't, helps narrow the scope of debugging.
 
-So far, `strace` did not help. We have some hints on how to proceed. We can either look at the filepaths in the binary file, or we can look further into what `gcc` was telling us about the implicit definition of printf.
+So far, `strace` did not help. We have some hints on how to proceed. We can either look at the filepaths in the binary file, or we can look further into what `gcc` was telling us about the implicit definition of `printf`.
 
 ### How to open a binary?
 
-> Dear search engine, how can I open `a.out` C binary file?
+> :monocle_face:: Dear search engine, how can I open `a.out` C binary file?
 
 The the tool we need is `objdump`. `objdump` comes installed with the `gcc` package. This bundling indicates that `objdump` is probably very useful and it is a default tool which is important to be familiar with.
 
+But first, I want to slightly modify the program we are looking at. Our `hello_world.c` is deterministic*, which means it does the same thing every time. Instead, let's make something more realistic, such as a program that asks for the user's name and responds hello to them.
+
+#### "Hello {name}"
+
+```diff
+> void main(int argc, char** argv) {
+>   if (argc < 2) {
+>     printf("hello: error with argc\n");
+>     return -1;
+>   }
+<   printf("hello world!\n");
+>   printf("hello, %s!\n", argv[1]);
+  return 0;
+  }
+```
+
+Now we print out a name given to us from the command line, as so `./a.out Samir`. Take a moment to think about whether you understand the change I just made.
+
+<details markdown="1">
+  <summary>Can you explain what argc is and why I check if it is 2? Why not 1? Why do I index 1 into argv if C arrays are zero indexed?</summary>
+> Practice looking this question up. Stack overflow is a wonderful library of questions. Try searching "what is argc and argv in C".
+
+</details>
+
+#### Back to the `objdump`
+
 ```sh
-$ # first look at the help output
-$ objdump 
+$ objdump # first look at the help output
 <omitted>
 $ objdump -D ./a.out
 <abbreviated for readability>
 0000000000401050 <main>:
-  401050:       83 ff 01                cmp    $0x1,%edi
-  401053:       7e 17                   jle    40106c <main+0x1c>
-  401055:       48 8b 56 08             mov    0x8(%rsi),%rdx
-  401059:       bf 02 00 00 00          mov    $0x2,%edi
-  40105e:       31 c0                   xor    %eax,%eax
-  401060:       48 8d 35 b4 0f 00 00    lea    0xfb4(%rip),%rsi        # 40201b <_IO_stdin_used+0x1b>
-  401067:       e9 d4 ff ff ff          jmp    401040 <__printf_chk@plt>
-  40106c:       48 8d 3d 91 0f 00 00    lea    0xf91(%rip),%rdi        # 402004 <_IO_stdin_used+0x4>
-  401073:       e9 b8 ff ff ff          jmp    401030 <puts@plt>
-  401078:       0f 1f 84 00 00 00 00    nopl   0x0(%rax,%rax,1)
-  40107f:       00
+  401050:       48 83 ec 08             sub    $0x8,%rsp
+  401054:       83 ff 01                cmp    $0x1,%edi
+  401057:       7e 1e                   jle    401077 <main+0x27>
+  401059:       48 8b 56 08             mov    0x8(%rsi),%rdx
+  40105d:       bf 02 00 00 00          mov    $0x2,%edi
+  401062:       31 c0                   xor    %eax,%eax
+  401064:       48 8d 35 b0 0f 00 00    lea    0xfb0(%rip),%rsi        # 40201b <_IO_stdin_used+0x1b>
+  40106b:       e8 d0 ff ff ff          call   401040 <__printf_chk@plt>
+  401070:       31 c0                   xor    %eax,%eax
+  401072:       48 83 c4 08             add    $0x8,%rsp
+  401076:       c3                      ret
+  401077:       48 8d 3d 86 0f 00 00    lea    0xf86(%rip),%rdi        # 402004 <_IO_stdin_used+0x4>
+  40107e:       e8 ad ff ff ff          call   401030 <puts@plt>
+  401083:       83 c8 ff                or     $0xffffffff,%eax
+  401086:       eb ea                   jmp    401072 <main+0x22>
+  401088:       0f 1f 84 00 00 00 00    nopl   0x0(%rax,%rax,1)
+  40108f:       00
 ```
 
-I see some nonsense in the objdump. I cannot recognize this is the same as my original `hello_name.c`.
+I see some nonsense in the objdump. I cannot recognize this binary is the same as my original `hello_name.c`.
 
-First we must recompile with debug flags to make this easier. Now I think we have explored our way to the right level of abstraction on what `printf` is actually doing.
-Binary spelunking is the perfect way to see what the CPU is running in order to get us to hello world showing up.
-
-```c
-0000000000401050 <main>:
-  401050:       83 ff 01                cmp    $0x1,%edi
-  401053:       7e 17                   jle    40106c <main+0x1c>
-  401055:       48 8b 56 08             mov    0x8(%rsi),%rdx
-  401059:       bf 02 00 00 00          mov    $0x2,%edi
-  40105e:       31 c0                   xor    %eax,%eax
-  401060:       48 8d 35 b4 0f 00 00    lea    0xfb4(%rip),%rsi        # 40201b <_IO_stdin_used+0x1b>
-  401067:       e9 d4 ff ff ff          jmp    401040 <__printf_chk@plt>
-  40106c:       48 8d 3d 91 0f 00 00    lea    0xf91(%rip),%rdi        # 402004 <_IO_stdin_used+0x4>
-  401073:       e9 b8 ff ff ff          jmp    401030 <puts@plt>
-  401078:       0f 1f 84 00 00 00 00    nopl   0x0(%rax,%rax,1)
-  40107f:       00
-```
-
-> Note: `puts` vs `printf`
+> **Note:** `puts` vs `printf`
 > 
+> The binary appears to `call` one reference to `puts@plt` and one to `__printf_chk@plt`.
 > `puts` is simpler than `printf` because it does not do string formatting (ex: `%d`).
 > If you are printing a fixed literal string, then the compiler will probably make a call to the more efficient `puts` function instead.
 
 One tip is to try doing the simplest possible test when trying a new strategy. Minimizing the experiment ensures we do not get overloaded with unnecessary context.
-Let's first try out this new tool on our `hello_world` binary.
+
+First, we must recompile with debug flags to make this easier. I think we have explored our way to the right level of abstraction on what `printf` is actually doing.
+Binary spelunking is the perfect way to see what the CPU is running in order to get us to "hello world" showing up.
 
 ```sh
 $ gcc -g hello_world.c
@@ -413,55 +358,86 @@ $ objdump -D ./a.out
 
 We must be persistent. Making new systems wouldn't be fun if it was easy. By the end, I promise your appreciation for the immense scope of real systems will grow.
 
-There are many flags to `objdump`, which you can find on the `man` page. We might need to try some random flags before finding something useful. Again, the goal is to both induct new hypotheses on what is happening and deduct possibilities that are definitely not valid explanations for the behavior we are seeing [^4].
-
+There are many flags to `objdump`, which you can find on the `man` page. We might need to try some random flags before finding something useful. Again, the goal is to both induct new hypotheses on what is happening and deduct possibilities that are definitely not valid explanations for the behavior we are seeing [^debug].
 
 ![diagram of cutting search space in half](/images/spelunking/debug_space2.png){:style="display:block; margin-left:auto; margin-right:auto" width="60%" }
 
+Debugging tools allow us to slice the problem space into smaller pieces until we've dissected every behavior in the system.
+
 ```sh
-objdump -p ./a.out
-objdump -h ./a.out
+$ objdump -p ./a.out
+<omitted>
+$ objdump -h ./a.out
+<omitted>
 ```
 
 Ooh, I like the output of `-h`. It's concise and readable. We are  getting somewhere, so I want to be more thoughtful about what step we take next. Trying a few more commands...
 
 ```sh
-objdump -D ./a.out
+$ objdump -t ./a.out
+<omitted>
+$ objdump -d ./a.out
+<omitted>
+$ objdump -D ./a.out
+a.out:     file format elf64-x86-64
+
+Disassembly of section .interp:
+0000000000400318 <.interp>:
+---------- snipped for clarity ----------
 ```
 
 ... this also looks helpful. Let's recap. What can we check out next? There was the thing called "ELF". I dismissed it before when looking at the binary, but it keeps coming up. 
-I also want to look at the disassembly as something unexpected is going on.
+I also want to look deeper into the disassembly.
 
 A spoiler: we are going to need to understand both of these things, so the order doesn't matter.
 
 ### `dump`ster fire
 
-There's a lot of output from this disassembly. Scrolling through the assembly, it does not seem productive to jump into tracing `printf`.
+There's a lot of output from this disassembly, 1257 lines. Scrolling through the assembly, it does not seem productive to jump into tracing the entire program; we need to start with something smaller.
 
-### where art thou, `printf`?
+TODO: this following section needs another pass
+#### where art thou, `printf`?
 
 Find `printf` with `grep`. 
 
 ```sh
-objdump -D ./a.out | grep "printf"
+$ objdump -D ./a.out | grep "printf"
+<output is empty...>
 ```
 
-> Student: wtf?
-> Student: You know, I have a great idea how to finish debugging this. Let's give up.
+We turned on debug symbols, what gives?
+
+> :fearful:: wtf? :skull:
+>
+> :cursing_face:: You know, I have a great idea how to finish debugging this. Let's give up.
 
 The challenge is what makes debugging fun! Anticipate how much satisfaction you'll feel when we figure
 this out together! 
-Is there something simple we missed, similar to how we skipped over the references to "ELF"?
+Is there something simple we missed, similar to how we skipped over the seemingly irrelevant references to "ELF"?
 
 Another low hanging fruit to investigate is the objdump section titles. Analyzing the sections will give us a foothold on the huge assembly output.
 
-TODO: why did I give up on writing about section titles here?
-
 ```sh
-objdump -D ./a.out | grep "section"
+$ objdump -D ./a.out | grep "section"
+Disassembly of section .interp:
+Disassembly of section .note.gnu.property:
+Disassembly of section .note.ABI-tag:
+Disassembly of section .hash:
+Disassembly of section .gnu.hash:
+Disassembly of section .dynsym:
+Disassembly of section .dynstr:
+Disassembly of section .gnu.version:
+Disassembly of section .gnu.version_r:
+Disassembly of section .rela.dyn:
+Disassembly of section .rela.plt:
+Disassembly of section .init:
+Disassembly of section .plt:
+Disassembly of section .text:
+<snipped>
 ```
 
-We turned on debug symbols, what gives? Since we're stuck, we need to backtrack and try another path forward.
+Nevermind, these sections are more information that we do not know what to do with.
+Since we're stuck, we need to backtrack and try another path forward.
 Instead of using my contrived program, let's go back to a ~~simple~~ real program like nautilus.
 
 ```sh
@@ -482,7 +458,7 @@ Does this weird thing also happen for `hello_name.c`? Indeed, we see `printf`.
 Let's go back to our lab notebook and mark this behavior as something we will have to reconcile later. For now, let's stay calm and explore on.
 
 ```sh
-objdump -D ./a.out | grep "printf"
+$ objdump -D ./a.out | grep "printf"
 0000000000401040 <__printf_chk@plt>:
   401040:       ff 25 a2 2f 00 00       jmp    *0x2fa2(%rip)        # 403fe8 <__printf_chk@GLIBC_2.3.4>
   401067:       e9 d4 ff ff ff          jmp    401040 <__printf_chk@plt>
@@ -493,7 +469,7 @@ This is just a few lines, so we can check this manually. If we go in the objdump
 No expert tooling needed:
 
 ```sh
-objdump -D ./a.out | less
+$ objdump -D ./a.out | less
 # then type "/printf" <enter>
 ```
 
@@ -544,18 +520,20 @@ Disassembly of section .text:
 
 ### Pretty Little Thing
 
-We see all these references to `plt`. The Internet informs us that the PLT has a table with pointers
+We see all these references to `plt`. The Internet informs us that the PLT is some sort of table with pointers
 to the real locations of functions.
 
 Why would we not know where `printf` is? We must remember this function is from `libc`. In fact, the dump notes `printf` is defined from GLIBC version 2.3.4.
 
 We have debunked the theory that `printf` is a normal function call. Then what is it? You will be unable to find a definition of `printf` in the binary, regardless of how hard you look.
 
-> Student: how can I be sure `printf` is *actually* a part of libc? You're just some rando on the internet, not my teacher. :dizzy_face:
+> :hear_no_evil:: how can I be sure `printf` is *actually* a part of libc? You're just some rando on the internet, not my teacher. :dizzy_face:
+>
+> Instructor: Spoken like a true skeptic.
+> 
+> :hear_no_evil:: When I run a binary, all the OS does is go to `main()` and then start executing instructions. My entire binary has been printed, so something is definitely wrong with `objdump`.
 
-Spoken like a true skeptic. When I run a binary, all the OS does is go to `main()` and then start executing instructions. My entire binary has been printed, so something is wrong with `objdump`.
-
-Alas, another twist in the road. First one nitpick -- `main()` is not the first thing that runs. The dump has a `_start` symbol which is the entrypoint that `libc` uses to call `main`. Yes, it is the case that we have the whole binary. Think back to when we opened `a.out` in `vim`. Did we see something in addition to some uninterpretable binary? Hint: at the start and end of the file.
+Alas, another twist in the road. First one nitpick--`main()` is not the first thing that runs. The dump has a `_start` symbol which is the entrypoint that `libc` uses to call `main`[^entrypoint]. Yes, it is the case that we have the whole binary. Think back to when we opened `a.out` in `vim`. Did we see something in addition to some uninterpretable binary? Hint: at the start and end of the file.
 
 ### Return of the Elves
 
@@ -601,59 +579,45 @@ mmap(0x7f5c578b9000, 52696, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANON
 close(4)                                = 0
 ```
 
-If you roll up your sleeves and do some good, old-fashioned documentation sleuthing, you can understand what this previously overwhelming `strace` output means. And we also know that our LLM above was speaking confidently about things it doesn't know. Although it looked believable, it got many facts completely wrong.
+If you roll up your sleeves and do some good, old-fashioned documentation sleuthing, you can understand what this previously overwhelming `strace` output means. We also know that our LLM above was speaking confidently about things it doesn't know. Although it looked believable, it got many facts completely wrong.
 Instead of LLMs, let's apply our willpower to see what these straced lines mean.
+`man 2` has all the info we need. You can see more detail in [now it's your turn](#now-its-your-turn).
 
 1. `openat(libc.so.6)`: open the `libc` executable file on disk
 2. `read`: read `libc.so.6` from disk into memory
 3. `pread64`: continue reading from where it left off 
-4. `mmap`: map the library into the process address space as readable and executable, but not writable. Allocates some writable memory, likely as scratch space.
+4. `mmap`: map the library into the process address space as readable and executable, but not writable. Allocates some writable memory.
 5. `close`: close the file descriptor of the library
 
-
-`man 2` has all the info we need. You can see more detail in [now it's your turn](#now-its-your-turn).
-
 > Student: I'm still not satisfied. We never saw any reference to any logic of looking for `libc` in our `objdump`.
+> 
 > Instructor: That's the spirit. Do you have any ideas?
+>
 > Student: The first thing that pops into my mind is let's open this file `.../libc.so.6` in `vim`
+>
 > Instructor: Good idea. I can't discern anything from this file, but I do see this "ELF" mention again. What do we do when we see this?
+>
 > Student: `readelf`!
 
 ```sh
-$ readelf -a .../libc.so.6
+$ readelf -a ...path/to/libc.so.6
 ```
 
-There is a lot of output, but we can take a few seconds to skim the output. I piped this multi-thousand line output into `less` and held the spacebar to skim if anything catches my eye. I do see a huge section 
-"Symbol table '.dynsym' contains 3158 entries" which has a lot of "FUNC" entries. It appears to contain a reference to every function in libc. But why are these all in the dynamic symbol section again?
+There is a lot of output, but we can take a few seconds to skim the output. I piped this multi-thousand line output into `less` and held the spacebar to skim if anything catches my eye. I see a huge section 
+"Symbol table '.dynsym' contains 3158 entries" which has a lot of "FUNC" entries. This table appears to contain a reference to every function in `libc`. But why are these all in the dynamic symbol section?
 It appears this file doesn't know where these functions are located. The rabbit hole goes deeper; let's not lose hope.
 
-## Go Deeper, Brother
+## Go Deeper, Buddy
 
-TODO: learn pic vs got. I still do not fully know what is happening on a lazy resolution. what is RELRO? how can it be read only but done at runtime
-    The PLT contains stub entries that facilitate calling functions defined in other libraries (like libc).
-
-    The GOT holds the actual addresses for these functions. Initially, the GOT entries may point to a stub in the PLT that will invoke the dynamic linker for resolution.
-
-  What does this mean
-
-    For lazy binding, the PLT stubs call into the dynamic linker’s code, which is already part of the process’s address space and does not require writing to the now-read-only GOT for subsequent calls (the GOT was updated earlier or only the parts not marked read-only are used).
-
-  Need PIC to be in many addr spaces at different places
+We first need to search up some background information to understand what is going on. The Procedure Linkage Table (PLT) contains stub code which looks up the location of a function in the Global Offset Table (GOT) and jumps there.
+The GOT is an array of pointers which holds the actual addresses of these functions.
 
 > Instructor: That's great you know that. But what is it *actually doing*?
 
 We can use `gdb` to gain confidence in (or to invalidate) our new theory.
-We know the address of our `plt`, so let's print out that memory and see if it got loaded even before our code runs.
-
-Cool. And we can confirm this points to the area of virtual memory which `strace` told us that `libc` got read to. This discovery confirms `printf` is not a function call inside our code. Your OS's `libc` provides the implementation.
-
-Armed with this knowledge, we can both understand the world and bend it to our will. Let's use `gdb` to change where the function points. If I write a second function and recompile, I can modify execution from printf to my own function! How does it feel to be able to grok the system and control its behavior?
-
-We learned how processes are loaded and how libraries are dynamically loaded. We even know how to manipulate a running program.
-The "GOT and PLT for pwning" source at the bottom explains how to pwn the PLT/GOT. 
+We know the address of our `plt`, so let's print out that memory and confirm it gets loaded even before our code runs.
 
 ### Tracing PLT and GOT
-
 
 ```c
 #include <stdio.h>
@@ -665,7 +629,7 @@ int main() {
 }
 ```
 
-<!-- nix-shell -p gcc gdb usl -->
+<!-- nix-shell -p gcc gdb (musl) -->
 ```bash
 $ gcc -fno-pie -no-pie -g explore_plt.c
 $ gdb a.out
@@ -694,24 +658,32 @@ Dump of assembler code for function puts@plt:
 End of assembler dump.
 (gdb) p/x *(void**)0x403fe8
 $1 = ...
-# What does this line print at different points in the function?
+# Exercise: What does this line print at different points in the function?
 ```
 
-That line is a jump which follows a pointer to the jump location.
+The `jmp` instruction in the `plt` is a jump which follows a pointer to the jump location.
 `gdb` left a comment telling us that this value points to the entry for the "puts" symbol in the GOT.
+Cool! We can confirm this pointer lives in the area of virtual memory which `strace` told us that `libc` got read to. This discovery confirms `printf` is not a function call inside our code. Your OS's `libc` provides the implementation.
 
-If we look back at the `strace` and search for this address `0x403fe0`, we will see this line get matched.
+If we look back at the `strace` and search for this address `0x403fe8`, we will see this line get matched.
 
 ```c
 mprotect(0x403000, 4096, PROT_READ)     = 0
 ```
 
-The pwning blog post explains more, but this line makes the table entries read only.
-In context of our program, this means that the entire GOT got resolved by the loader and then marked as read only for security. Other programs or OSes may not resolve every library function immediately.
-It can be more efficient to lazily load the entries.
-These function pointers in the table could point to code which will resolve the address on-demand for future library calls.
+The pwning blog post in [further reading](#further-reading) explains more, but, to simplify, this line makes the table entries read only.
+In context of our program, this means that the entire GOT got resolved and then marked as read only for security.
 
-The flow is that the assembly points to the PLT which has a shim that does the GOT lookup. On the happy path this will lead directly to the library code. On the first use of a library function, the execution falls through using the red path, which asks the loader to locate the library function.
+<details markdown="1">
+  <summary>Exercise: What does print statement at the end of the above `gdb` code block print at different breakpoints in the function? Why?</summary>
+> You should notice that the value stored at the pointer changes before and after the first `printf` call.
+Most programs do not use every function of every dynamically linked library, so it can be more efficient to only load entries which are used.
+Initially, GOT entries initially point to a stub in the PLT that will invoke the dynamic linker for resolution.
+The code for this initialization is already in the process' address space, so the PLT can directly call it to load the needed entry on-demand.
+
+</details>
+
+The execution flows from the assembly which points to the PLT that contains a shim to do a GOT lookup. The happy path leads directly to the library code. On the first use of a library function, the execution falls through using the red path, which asks some code to locate the library function.
 
 ![](/images/spelunking/plt_trace.drawio.png)
 
@@ -721,55 +693,60 @@ In terms of the process' memory layout, the GOT entries initialize to pointing t
 
 ## Knowledge Check
 
-With what you know, you should be able to complete this fun and difficult exercise using normal control flow.
-Can you find an input to this function which causes the `printf` line to run?
+Armed with this knowledge, we can both understand the world and bend it to our will. Let's use `gdb` to change where the function points. If I write a second function and recompile, I can modify execution from `printf` to my own function! (Left as an exercise for you in [this section](#knowledge-check).) How does it feel to be able to fully understand the system and control its behavior?
 
-```c
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <string.h>
-
-int target;
-
-void hello()
-{
-  printf("code execution redirected! you win\n");
-  _exit(1);
-}
-
-void vuln()
-{
-  char buffer[512];
-
-  fgets(buffer, sizeof(buffer), stdin);
-
-  printf(buffer);
-
-  exit(1);  
-}
-
-int main(int argc, char **argv)
-{
-  vuln();
-}
-```
-Source: [protostar](https://exploit.education/protostar/format-four/), [updated version](https://exploit.education/phoenix/stack-four/)
-
-Background knowledge: [LiveOverflow video](https://www.youtube.com/watch?v=kUk5pw4w0h4)
-
-Solution: [LiveOverflow video](https://www.youtube.com/watch?v=t1LH9D5cuK4)
+> With what you know, you should be able to complete this fun and difficult exercise using normal control flow.
+> Can you find an input to this function which causes the `printf` line to run?
+> 
+> ```c
+> #include <stdlib.h>
+> #include <unistd.h>
+> #include <stdio.h>
+> #include <string.h>
+> 
+> int target;
+> 
+> void hello()
+> {
+>   printf("code execution redirected! you win\n");
+>   _exit(1);
+> }
+> 
+> void vuln()
+> {
+>   char buffer[512];
+> 
+>   fgets(buffer, sizeof(buffer), stdin);
+> 
+>   printf(buffer);
+> 
+>   exit(1);  
+> }
+> 
+> int main(int argc, char **argv)
+> {
+>   vuln();
+> }
+> ```
+> Source: [protostar](https://exploit.education/protostar/format-four/), [updated version](https://exploit.education/phoenix/stack-four/)
+> 
+> Background knowledge: [LiveOverflow video](https://www.youtube.com/watch?v=kUk5pw4w0h4)
+> 
+> Solution: [LiveOverflow video](https://www.youtube.com/watch?v=t1LH9D5cuK4)
 
 Even if you do not go through the exercise, this video is well worth watching.
 It is far easier to understand the execution flow through the GOT and PLT in video form.
+
+We learned how processes are loaded and how libraries are dynamically loaded. We even know how to manipulate a running program.
+The "GOT and PLT for pwning" in [further reading](#further-reading) explains how to pwn the PLT/GOT. 
 
 # Now it's your turn
 
 We have covered everything now. Can you explain it? Do it, I'm serious. I'm listening from the other side of your screen. Draw out all the steps.
 
-To make sure we haven't missed anything, we can map these to all the syscalls that get called.
+To make sure we haven't missed anything, we can map these steps to the each syscall `strace` lists when running a program.
 
-1. Write `./a.out` in bash
+1. Pressing enter with `./a.out` in bash
 2. `bash` will fork and then execve `./a.out`
 3. Linux reads the ELF and loads the headers
 4. ld-loader
@@ -855,30 +832,26 @@ Source: [maizure](https://www.maizure.org/projects/printf/dynamic_strace_walkthr
 </details>
 
 We can be confident that these are the steps that get taken. We found a path that definitely explains the chain of events. However, the question remains: ***who* is doing all this work?**
-
-Nothing happens by magic. There is code somewhere that is populating our plt table, and it sure is not in `a.out`. Or is it?
+Nothing happens by magic. There is code somewhere that is populating our PLT table, and it sure is not in `a.out`. Or is it?
 
 There are two cases. Either this logic is in `a.out` or it is done by the kernel during the `execve` syscall to set up the process.
+It's easy to blame behavior we don't understand on things we don't understand. In either case, we should be able to trace what is going on. What if I told you dynamic loading does not use any special kernel features? We saw every syscall that gets called. If `strace` is observing a syscall happening, then it must be getting triggered by something in userspace. All the syscalls we see getting called are completely general. I don't see syscalls called anything like "dynamic load" to suggest a special mechanism is happening. Unix is all about simplicity. Given this hint, let's take it from the top and trace to see where the code is coming from.
 
-It's easy to blame behavior we don't understand on things we don't understand. In either case, we should be able to trace what is going on. What if I told you dynamic loading does not use any special kernel features? We saw every syscall that gets called. If `strace` is observing a syscall happening, then it must be getting triggered by something in userspace. All the syscalls we see getting called are completely general. I don't see a syscall called "dynamic load" or anything like that to suggest a special mechanism is happening. Unix is all about simplicity. Given this hint, let's take it from the top and trace to see where the code is coming from.
+Look at the bytes of `a.out` in `vim` again. I can see there is a bunch of text at the start and end of the binary. There is compile-time info at the end. This suggests that the text at the end is debug info and the text at the start is the ELF header.
 
-Look at the bytes of `a.out` in `vim` again. I can see there is a bunch of text at the start and end of the binary. There is compile-time info at the end. This suggests that the text at the end is debug info and the text at the start is the ELF headers. Let's recompile without debug flags. Minimizing the test case will make it easier to find the relevant code in `a.out`.
-
-TODO: I thought all debug info would be gone. What is that at the bottom?
-
-If we look carefully this time at the binary and readelf, there is this file path in both places, which we have been skipping.
+If we carefully scan the binary and `readelf` this time, there is this file path in both places, which we have been skipping.
 
 ```md
 [Requesting program interpreter: /nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/ld-linux-x86-64.so.2]
 ```
 
-> Aside: What is the loader doing to reach the start of the program?
-> 
-> "Copies" code and data from an executable file on disk into memory. The loader starts execution of the program at the entrypoint specified in the ELF header.
-> The address of the first instruction is usually the start of `.text`, which contains a `_start` symbol that runs some CPU specific assembly. This architecture-specific assembly sets up memory and any bookkeeping that need to be done before starting `main()` by calling `__libc_start_main` [^5].
-
-If you have seen `bash` or `python` scripts, this is similar to the `#!` shebang placed at the start of a file. 
+If you have seen `bash` or `python` scripts, this is similar to the `#!` shebang placed at the start of a file[^shebang]. 
 This file path leads to a loader program which does the work of loading our libraries.
+
+> :exploding_head:: What is the loader doing to reach the start of the program?
+> 
+> The loader copies code and data from an executable file on disk into memory. The loader starts execution of the program at the entrypoint specified in the ELF header.
+> The address of the first instruction is usually the start of `.text`, which contains a `_start` symbol that runs some CPU specific assembly. This architecture-specific assembly sets up memory and any bookkeeping that need to be done before starting `main()` by calling `__libc_start_main` [^5].
 
 Isn't that cool? We loaded libraries with standard kernel mechanisms. The kernel knows how to read ELF headers and called the binary at the provided absolute file path. The kernel does not implement any logic to load libraries.
 
@@ -886,44 +859,43 @@ Now this will blow your mind.
 
 Programs are files. Code is just binary wrapped with some ELF headers sitting on your disk drive. We can see dynamic linking is accomplished by using normal file operations. All it takes to dynamically load is to map the library into the memory space at runtime. Using the `mmap` syscall does just this! Programs can modify their own address space and load libraries however they wish. This requires no special kernel support! Linux provides us with these general syscall mechanisms which we can flexibly use.
 
-If we zoom out, what was the point of dynamically loading in the first place. We have observed most programs are dynamically loading `libc`. But it is all just code in the end, why not just include it in the same file? Indeed, this would have less runtime overhead since you don't have to do any loading. 
+If we zoom out, what was the point of dynamically loading in the first place? We have observed most programs dynamically load `libc`. But it is all just code in the end, why not include it in the same file? Indeed, this would have less runtime overhead since you don't have to do any loading.
+
+Dynamic linking saves a lot of disk space by deduplicating the code for `libc` functions like `printf`. Libraries save disk space and make updating libraries as easy as swapping a single file. Note the size differences between the source code and static vs. dynamically linked binaries.
 
 ```c
 $ ls -lah hello_world*
--rw-r--r-- 1 mod users   64 Apr  3 01:20 hello_world.c
--rwxr-xr-x 1 mod users  16K Apr 11 00:24 hello_world.dynamic
--rwxr-xr-x 1 mod users  22K Apr 11 00:24 hello_world.static
+-rw-r--r-- 1 user group   64 Apr 11 00:00 hello_world.c
+-rwxr-xr-x 1 user group  16K Apr 11 00:00 hello_world.dynamic
+-rwxr-xr-x 1 user group  22K Apr 11 00:00 hello_world.static
 ```
 
-Dynamic linking saves a lot of disk space by deduplicating the code for `libc` functions like `printf`. Libraries save disk space and make updating libraries as easy as swapping a single file. But, if we load many programs, then we still have the issue that these `libc` functions are now duplicated in the memory of every program.
-How would modify library loading to support sharing the same physical memory for every process?
+But, if we load many programs, then we still have the issue that these `libc` functions are now duplicated in the memory of each program.
 
-> Instructor: Neat. How would you do that if you were designing it?
-
-```
-memory map share same phys mem diagram
-          phys mem
-P1 ----->  libc
-      |
-P2 ---- 
-```
+> Instructor: How would you do that if you were designing it? How would we need to modify library loading to support sharing the same physical memory for every process?
 
 Consider that loading libraries simply puts bytes into memory. All applications run in their own virtual memory spaces.
 What if we could load `libc` once and then share this same physical memory.
 
+![shared file map](/images/spelunking/shared_file_map.gif){:style="display:block; margin-left:auto; margin-right:auto" }
+
+The diagram[^diagram_shm] shows how we could facilitate this sharing. We can keep exactly one copy of a library in physical memory and each process' virtual addresses map into it.
+
 Let's dive into what `mmap` is doing to hypothesize how to add support for sharing physical memory.
 
-> Student: Hoooold on. This doesn't make any sense. The libraries may need to be loaded into a different place in memory
+> :disguised_face:: Hoooold on. This doesn't make any sense. The libraries may need to be loaded into a different place in memory
 > for each process depending on the libraries they specify and the process' memory layout. It is impossible for a program
 > to be at different points in memory because the addresses in the instructions will be wrong.
 >
-> Instructor: Very thoughtful! The libraries are instructions, so any pointers you create will be in a different stack for that process. That means that pointers should be correct within each individual process. And remember, even if the library is loaded in a different place, our program can locate the libraries by looking up the symbol in the PLT/GOT. This solves the relocation problem from the perspective of our user program. However, the libraries have the challenge that they cannot rely on using addresses in their code because they do not know where they will get loaded in memory. For symbols that call into other libraries it is easy as we can reuse the same idea of symbol to address lookup tables.
+> Very thoughtful! The libraries are instructions, so any pointers you create will be in a different stack for that process. That means that pointers should be correct within each individual process. And remember, even if the library is loaded in a different place, our program can locate the libraries by looking up the symbol in the PLT/GOT. This solves the relocation problem from the perspective of our user program. However, the libraries have the challenge that they cannot rely on using addresses in their code because they do not know where they will get loaded in memory. For symbols that call into other libraries it is easy as we can reuse the same idea of symbol to address lookup tables.
 >
-> Recall in assembly you need to specify a destination address to jump to. Instead of using absolute addresses, engineers
-> needed to add compiler support for [Position-Independent Code/Executables](https://en.wikipedia.org/wiki/Position-independent_code). This feature ensures the output binary only uses relative addresses that will work wherever the program gets loaded.
+> Recall in assembly you need to specify a destination address to jump to.
+> Luckily, compiler engineers invented [Position Independent Code](https://en.wikipedia.org/wiki/Position-independent_code) (PIC/PIE) to support the shared library use case. Using `gcc` with [`-pie`](https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html) will make the compiler emit instructions that only use relative addressing, allowing it to run from any start address. 
 > Here is a concrete [example exercise](https://yurichev.com/news/20211015_PIC/) that shows the conversion of a normal assembly to position independent.
 
 ### Gimme a man
+
+TODO: left off here. we can reverse engineer the syscalls to see if we get any ideas and then read the documentation to find how to support this memory deduplication feature.
 
 The `mmap` `man` documentation should explain the behavior of `mmap` along with the `MAP_PRIVATE` flag. `man mmap` notes to check the other manual, so I check `man 2`.
 
@@ -1383,6 +1355,7 @@ I hope you can appreciate the beauty of the ridiculous world we live in. All it 
 
 ### Further Reading:
 
+- best resource I have found on shared libraries: [How To Write Shared Libraries by Ulrich Drepper](https://www.akkadia.org/drepper/dsohowto.pdf)
 - [Dynamic linker wiki](https://en.wikipedia.org/wiki/Dynamic_linker)
 - [`mmap` wiki](https://en.wikipedia.org/wiki/Mmap)
 - [How statically linked programs run on Linux (and how you get from libc to the start symbol)](https://eli.thegreenplace.net/2012/08/13/how-statically-linked-programs-run-on-linux)
@@ -1411,6 +1384,10 @@ function main {
 
 Of course, there is a lot more code running. You can use a full-fat disassembler such as Ghidra. This [dogbolt web disassembly](https://dogbolt.org/?id=8f1e28f5-3bfc-4d41-8be2-82c12f54487f) of a hello world program is enough to get an idea of what the output looks like.
 
+---
+
+Thank you for reading! Please email me any feedback at `process-loading <at> this domain` or leave it in the comments below. This article took me x hours over x weeks.
+
 Footnote:
 
 Nachos is confusing because semantics do not quite match linux
@@ -1418,10 +1395,6 @@ confused the semantics of mmap and readVM/writeVM.
 
 [^1]: footnote: path to finding this is using this post https://stackoverflow.com/questions/14542348/how-to-find-a-definition-of-a-specific-syscall-in-linux-sources and then use regex "." syntax to find the definition of mmap
 [^2]: How Data is Fetched from Disk
-[^3]:[The true meaning of teaching](https://www.youtube.com/watch?v=bYv_Jcd27Gc)
-[^4]: A good POV of the [debugging mental model](https://blog.regehr.org/archives/199)
-[^5]: [Great lecture explaining PLT and GOT](https://www.youtube.com/watch?v=Ss2e6JauS0Y)
-
 If the requested page is not in the page cache, execution proceeds as follows:
 
 - `block_page_mkwrite()` or `ext4_filemap_fault()` is called, depending on the filesystem.
@@ -1431,3 +1404,14 @@ If the requested page is not in the page cache, execution proceeds as follows:
 - The request goes through the I/O scheduler and block device driver.
 - The disk fetches the page into the page cache.
 - The page is marked present, and the fault handling completes.
+
+[^3]:[The true meaning of teaching](https://www.youtube.com/watch?v=bYv_Jcd27Gc)
+[^debug]: A good POV of the [debugging mental model](https://blog.regehr.org/archives/199)
+[^5]: [Great lecture explaining PLT and GOT](https://www.youtube.com/watch?v=Ss2e6JauS0Y)
+[^entrypoint]: It's conventionally called `_start`, but in reality the initial point of execution is determined by the entrypoint of the (ELF) header. Further reading: [one](https://stackoverflow.com/a/36165001), [two](https://unix.stackexchange.com/questions/588240/what-mandates-the-start-entrypoint-kernel-ld-linux-so-etc).
+[^shebang]: It's the exact same! Having a file start with the bytes `#!` indicates that the file should be [interpeted as a script](https://elixir.bootlin.com/linux/v6.14-rc6/source/fs/binfmt_script.c). I'll keep hammering the point home. Everything is just bits at the end of the day. An executable is not different than other files stored on your disk. Let's take this idea to the extreme: you can write an executable directly in a text editor. ISN'T THAT CRAZY? Kay Lack has a [beautiful video](https://youtu.be/cX5tQJhuNeY) demonstrating manually writing an ELF file and Steve Chamberlin has a great [blog post](https://www.bigmessowires.com/2015/10/08/a-handmade-executable-file/) where he does this on Windows.
+[^diagram_shm]: Image from *Win32 API Programming with Visual Basic* by Steven Roman page 212.
+
+
+
+
