@@ -427,12 +427,23 @@
       border-bottom: none;
     }
   }
-
+  // First level indent
   li ul > li a {
     padding-left: 2rem;
     font-weight: normal;
   }
-
+  // Second level indent
+  li ul > li > ul > li a {
+    padding-left: 3rem;
+  }
+  // Third level indent
+  li ul > li > ul > li > ul > li a {
+    padding-left: 4rem;
+  }
+  // Fourth level indent
+  li ul > li > ul > li > ul > li > ul > li a {
+    padding-left: 5rem;
+  }
   /* hide sub sub links on small screens*/
   li > ul li {
     display: none;
