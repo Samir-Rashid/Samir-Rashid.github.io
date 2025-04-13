@@ -11,6 +11,10 @@ redirect_from:
 ---
 {% include base_path %}
 
+<div class="notice notice--announcement" markdown="1">
+#### I plan on attending [Open Sauce](https://opensauce.com/) (July 18-20, 2025 in San Mateo, California) and [TockWorld](https://world.tockos.org/tockworld8), which is happening with [RustConf](https://rustconf.com/) (Sept 2-5, 2025 in Seattle, Washington). Reach out if you'd like to meet me there!
+</div>
+
 I am a hardcore software engineer and researcher working on the Rust-based [Tock Operating System](https://tockos.org/). I am working on developing secure devices such as roots of trust and FIDO security keys.
 My research is trying to make systems understandable, safe, and correct. 
 
