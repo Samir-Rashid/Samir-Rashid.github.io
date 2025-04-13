@@ -4,6 +4,8 @@ permalink: /linux-pronouns/
 date: 2025-02-17
 # tags:
   # - talk
+header:
+  teaser: "pronouns/graph1.png"
 excerpt: How are pronouns used in the Linux kernel? I analyzed the distribution of pronouns in the 6.13 Linux kernel source. Unsurprisingly, I find that male pronouns are common, but this makes female pronouns all the more unusual.
 ---
 
