@@ -1,25 +1,19 @@
 ---
 title: "Linux Spelunking: How are processes loaded?"
 permalink: /process-loading/
-date: 2025-03-07
+date: 2025-04-13
 tags:
   - research
+header:
+  teaser: "spelunking/flow.drawio.png"
 excerpt: In this post, we will demystify how Linux loads processes and discover how Linux works on a journey that reminds me of the joys of computers and discovery.
 ---
-
-TODO: redo without nix store
-
-TODO: writing is too informal/flowery/not simple words. verbiage review with hemingway
-
-TODO: really need the better code formatting like https://squidfunk.github.io/mkdocs-material/reference/code-blocks/
-
-TODO: fix why opening summary block first time jumps
 
 # Linux Spelunking: How are processes loaded? How would I figure it out?
 
 Today we journey into Linux to discover how programs are loaded.
-To build new systems, you must understand how the current system actually works—not how the documentation claims it works.
-This post is meant for people who want to learn more about kernel internals but have been hesitating to dive in for themselves;
+Building new systems requires understanding how the current system actually works—not how the documentation claims it works.
+I wrote this post for people who want to learn more about kernel internals but have been hesitating to dive in for themselves;
 it's the post I wish I had when starting out.
 This article aims to convince you that kernel development is not intimidating.
 We will explore how to deal with ambiguity when researching something new. You will come out with an understanding of the exact actions Linux takes to load a realistic program. Moreover, you will learn the tools to deconstruct any large program.
@@ -50,12 +44,12 @@ Before we look at the output, let's stop to recursively explain what is going on
 
 > :information_desk_person:: Why Nautilus?
 > 
-> No reason. I just wanted a simple program that doesn't do much.
+> No reason. I wanted a simple program that doesn't do much.
 
 > :raising_hand:: How do you know to look at calls into the kernel?
 > 
-> Think about how the way programs run. Starting any process requires the kernel to be notified of the program you are starting.
-> These interactions are called **syscalls**. These functions are how user programs ask the operating system to do something privileged.
+> Think about how the way programs run. Starting any process requires notifying the kernel of the program you are starting.
+> These interactions are called **syscalls**. User programs use these functions to ask the operating system to do something privileged.
 > For example, a process cannot open a file without asking for permission first. You can think of system calls as normal function calls for the purposes of this exercise.
 
 
@@ -66,7 +60,7 @@ brk(NULL)                               = 0x30e3a000
 --------- 23,744 lines snipped ---------
 ```
 
-What was that output??? My terminal gets flooded with nautilus' tens of thousands of syscalls. I have clearly made a grave mistake. That's okay, it's too early to get demoralized. Clearly, my mental model that a program which does not *appear* to be doing anything *is* doing *nothing* is wrong. How can we adjust course to make better progress? 
+What was that output??? My terminal gets flooded with nautilus' tens of thousands of syscalls. I have made a grave mistake. That's okay, it's too early to get demoralized. Evidently, my mental model that a program which does not *appear* to be doing anything *is* doing *nothing* is wrong. How can we adjust course to make better progress? 
 
 > **Debugging Process**:
 > 
@@ -95,7 +89,7 @@ Aha, we have solved the puzzle! The kernel starts running the instructions of `m
 
 > :angry:: You said I wouldn't need any prerequisite knowledge to understand this. I don't understand these keywords. What is this weird `void` thing?
 > 
-> If you haven't seen this before, I think you can ignore it for now. It just means that the function has no input.
+> If you haven't seen this before, you can ignore it for now. It means that the function has no input.
 
 > :confounded:: What is that `\n` after hello world?
 > 
@@ -137,7 +131,7 @@ Weird. The program runs the same, so why are we getting all these warnings?
 One line jumps out to me. `gcc` warns us **four** times about something to do with the "declaration of 'printf'".
 Before we get ahead of ourselves, allow me to fix these compiler warnings. Fixing these warnings will prevent any weird unrelated issues that interfere with our later debugging results.
 
-Following the error message `include ‘<stdio.h>’ or provide a declaration of ‘printf’` tells us precisely how to fix the error and points out the problem.
+Following the error message `include ‘<stdio.h>’ or provide a declaration of ‘printf’` tells us precisely how to fix the error.
 C becomes aware of functions it can link with by using header files. Including `stdio.h` tells `gcc` about the definition of `printf`.
 
 ```diff
@@ -233,19 +227,19 @@ $ strace -o hello_world.strace ./a.out
 Oh my. Have we even gotten closer to the solution?
 Of the following output, the only recognizable line is `write(1, "hello world!\n", 13)          = 13`, which tells us that printing is using a `write` syscall to send the output.
 The output has a lot of information we do not understand yet, and I do not know what data we want to look for.
-On the positive side, at least the output fits on a screen now. Directly tracing the output hasn't gotten us anywhere and these syscalls still look daunting.
+On the positive side, at least the output fits on a screen now. Tracing the output hasn't gotten us anywhere and these syscalls still look daunting.
 
 We need to break out our debugging hats :tophat:. If we have faith that we will be able to solve this problem, then we will be able to figure out what is going on.
 Let us try repeating the strategy of looking at the output of our tools. This time `gcc` and the standard output on the command line haven't suggested anything to us. 
 
 This will be quite tedious. Can we offload the busy work an LLM and see what it says?
-We live in the 21st century, so although I wouldn't trust an LLM to give the correct answer, but it can be helpful by suggesting terms we should look at.
+We live in the 21st century, so although I wouldn't trust an LLM to give the correct answer, it can helpfully suggest terms to look up.
 
 ![asking chatgpt to explain the syscalls](/images/spelunking/chatgpt_syscall.png)
 
 > Instructor: You are going down the wrong track. Let's back up.
 
-We need to take a moment to think about this approach. `strace` is a bit too hard to interpret, especially since it requires us to understand what all these syscalls are and then to fill in the blanks of what is going on.
+We need to take a moment to think about this approach. `strace` is too hard to interpret because it requires us to first understand what all these syscalls are.
 
 > **Debugging Process**:
 > 
@@ -285,9 +279,9 @@ So far, `strace` did not help. We have some hints on how to proceed. We can eith
 
 > :monocle_face:: Dear search engine, how can I open `a.out` C binary file?
 
-The the tool we need is `objdump`. `objdump` comes installed with the `gcc` package. This bundling indicates that `objdump` is probably very useful and it is a default tool which is important to be familiar with.
+The the tool we need is `objdump`. `objdump` comes installed with the `gcc` package. This bundling indicates that `objdump` is a default tool important to be familiar with.
 
-But first, I want to slightly modify the program we are looking at. Our `hello_world.c` is deterministic*, which means it does the same thing every time. Instead, let's make something more realistic, such as a program that asks for the user's name and responds hello to them.
+But first, I want to slightly modify the program we are looking at. Our `hello_world.c` is deterministic*, which means it does the same thing every time. Instead, let's make something more realistic, such as a program that asks for the user's name and responds.
 
 #### "Hello {name}"
 
@@ -303,7 +297,7 @@ But first, I want to slightly modify the program we are looking at. Our `hello_w
   }
 ```
 
-Now we print out a name given to us from the command line, as so `./a.out Samir`. Take a moment to think about whether you understand the change I just made.
+Now we print out a name given to us from the command line, as so `./a.out Samir`. Take a moment to think about whether you understand the change I made.
 
 <details markdown="1">
   <summary>Can you explain what argc is and why I check if it is 2? Why not 1? Why do I index 1 into argv if C arrays are zero indexed?</summary>
@@ -340,16 +334,11 @@ $ objdump -D ./a.out
 
 I see some nonsense in the objdump. I cannot recognize this binary is the same as my original `hello_name.c`.
 
-> **Note:** `puts` vs `printf`
-> 
-> The binary appears to `call` one reference to `puts@plt` and one to `__printf_chk@plt`.
-> `puts` is simpler than `printf` because it does not do string formatting (ex: `%d`).
-> If you are printing a fixed literal string, then the compiler will probably make a call to the more efficient `puts` function instead.
 
 One tip is to try doing the simplest possible test when trying a new strategy. Minimizing the experiment ensures we do not get overloaded with unnecessary context.
 
 First, we must recompile with debug flags to make this easier. I think we have explored our way to the right level of abstraction on what `printf` is actually doing.
-Binary spelunking is the perfect way to see what the CPU is running in order to get us to "hello world" showing up.
+Binary spelunking is the perfect way to see what the CPU runs to make "hello world" show up.
 
 ```sh
 $ gcc -g hello_world.c
@@ -362,7 +351,7 @@ There are many flags to `objdump`, which you can find on the `man` page. We migh
 
 ![diagram of cutting search space in half](/images/spelunking/debug_space2.png){:style="display:block; margin-left:auto; margin-right:auto" width="60%" }
 
-Debugging tools allow us to slice the problem space into smaller pieces until we've dissected every behavior in the system.
+Debugging tools let us slice the problem space into smaller pieces until we've dissected every behavior in the system.
 
 ```sh
 $ objdump -p ./a.out
@@ -395,7 +384,6 @@ A spoiler: we are going to need to understand both of these things, so the order
 
 There's a lot of output from this disassembly, 1257 lines. Scrolling through the assembly, it does not seem productive to jump into tracing the entire program; we need to start with something smaller.
 
-TODO: this following section needs another pass
 #### where art thou, `printf`?
 
 Find `printf` with `grep`. 
@@ -447,15 +435,11 @@ objdump -D $(which nautilus) | grep "printf"
   40132f:       e8 4c fd ff ff          call   401080 <__asprintf_chk@plt>
 ```
 
-{ TODO: diagram of person staring into abyss of a wall }
-
 What? I was not expecting this at all. I was staring at this wall we got stuck at and thought I would have to try a bunch of things to get through. But this is something we didn't expect. Why did changing the binary we use make a difference?
 
 We have found something that doesn't fit in our mental model. Great! Now we get an opportunity to learn something cool and update our knowledge.
 
 Does this weird thing also happen for `hello_name.c`? Indeed, we see `printf`.
-
-Let's go back to our lab notebook and mark this behavior as something we will have to reconcile later. For now, let's stay calm and explore on.
 
 ```sh
 $ objdump -D ./a.out | grep "printf"
@@ -464,9 +448,20 @@ $ objdump -D ./a.out | grep "printf"
   401067:       e9 d4 ff ff ff          jmp    401040 <__printf_chk@plt>
 ```
 
-This is just a few lines, so we can check this manually. If we go in the objdump to where this is found.
+Comparing the `objdump` of `hello_name` and `hello_world` reveals two different kinds of library calls.
 
-No expert tooling needed:
+```c
+  40106b:       e8 d0 ff ff ff          call   401040 <__printf_chk@plt>
+
+  40107e:       e8 ad ff ff ff          call   401030 <puts@plt>
+```
+
+The `hello_world` binary doesn't have any `printf`, but `hello_name` has both.
+What is the difference between `puts` and `printf`? The binary appears to `call` one reference to `puts@plt` and one to `__printf_chk@plt`.
+`puts` is simpler than `printf` because it does not do string formatting (ex: `%d`).
+If you are printing a fixed literal string, then the compiler will probably make a call to the more efficient `puts` function instead.
+
+We can get back to debugging the main issue of what `printf` is doing. The code is a few lines, so we can check this manually. Let us go into the `objdump` where this is found, no expert tooling needed:
 
 ```sh
 $ objdump -D ./a.out | less
@@ -527,7 +522,7 @@ Why would we not know where `printf` is? We must remember this function is from 
 
 We have debunked the theory that `printf` is a normal function call. Then what is it? You will be unable to find a definition of `printf` in the binary, regardless of how hard you look.
 
-> :hear_no_evil:: how can I be sure `printf` is *actually* a part of libc? You're just some rando on the internet, not my teacher. :dizzy_face:
+> :hear_no_evil:: how can I be sure `printf` is *actually* a part of libc? You're some rando on the internet, not my teacher. :dizzy_face:
 >
 > Instructor: Spoken like a true skeptic.
 > 
@@ -670,8 +665,7 @@ If we look back at the `strace` and search for this address `0x403fe8`, we will 
 ```c
 mprotect(0x403000, 4096, PROT_READ)     = 0
 ```
-
-The pwning blog post in [further reading](#further-reading) explains more, but, to simplify, this line makes the table entries read only.
+This line makes the table entries read only. The pwning blog post in [further reading](#further-reading) explains more.
 In context of our program, this means that the entire GOT got resolved and then marked as read only for security.
 
 <details markdown="1">
@@ -687,7 +681,7 @@ The execution flows from the assembly which points to the PLT that contains a sh
 
 ![](/images/spelunking/plt_trace.drawio.png)
 
-In terms of the process' memory layout, the GOT entries initialize to pointing the the loader executable code to the location of the instructions for the library function.
+In the process' memory layout, the GOT entries initially point to loader executable code, then to the location of the instructions inside the library.
 
 ![](/images/spelunking/plt_memory.drawio.png){:style="display:block; margin-left:auto; margin-right:auto" width="60%" }
 
@@ -737,7 +731,7 @@ Armed with this knowledge, we can both understand the world and bend it to our w
 Even if you do not go through the exercise, this video is well worth watching.
 It is far easier to understand the execution flow through the GOT and PLT in video form.
 
-We learned how processes are loaded and how libraries are dynamically loaded. We even know how to manipulate a running program.
+We learned how Linux loads processes and dynamically loads libraries. We even know how to manipulate a running program.
 The "GOT and PLT for pwning" in [further reading](#further-reading) explains how to pwn the PLT/GOT. 
 
 # Now it's your turn
@@ -845,7 +839,7 @@ If we carefully scan the binary and `readelf` this time, there is this file path
 [Requesting program interpreter: /nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36/lib/ld-linux-x86-64.so.2]
 ```
 
-If you have seen `bash` or `python` scripts, this is similar to the `#!` shebang placed at the start of a file[^shebang]. 
+If you have seen `bash` or `python` scripts, this is like the `#!` shebang placed at the start of a file[^shebang]. 
 This file path leads to a loader program which does the work of loading our libraries.
 
 > :exploding_head:: What is the loader doing to reach the start of the program?
@@ -857,9 +851,9 @@ Isn't that cool? We loaded libraries with standard kernel mechanisms. The kernel
 
 Now this will blow your mind. 
 
-Programs are files. Code is just binary wrapped with some ELF headers sitting on your disk drive. We can see dynamic linking is accomplished by using normal file operations. All it takes to dynamically load is to map the library into the memory space at runtime. Using the `mmap` syscall does just this! Programs can modify their own address space and load libraries however they wish. This requires no special kernel support! Linux provides us with these general syscall mechanisms which we can flexibly use.
+Programs are files. Code is just binary wrapped with some ELF headers sitting on your disk drive. We can see dynamic linking is done using normal file operations. All it takes to dynamically load is to map the library into the memory space at runtime. Using the `mmap` syscall does just this! Programs can modify their own address space and load libraries however they wish. No special kernel support required! Linux provides us with these general syscall mechanisms which we can flexibly use.
 
-If we zoom out, what was the point of dynamically loading in the first place? We have observed most programs dynamically load `libc`. But it is all just code in the end, why not include it in the same file? Indeed, this would have less runtime overhead since you don't have to do any loading.
+If we zoom out, what was the point of dynamically loading in the first place? We have observed most programs dynamically load `libc`. But it is all code in the end, why not include it in the same file? Indeed, this would have less runtime overhead since you don't have to do any loading.
 
 Dynamic linking saves a lot of disk space by deduplicating the code for `libc` functions like `printf`. Libraries save disk space and make updating libraries as easy as swapping a single file. Note the size differences between the source code and static vs. dynamically linked binaries.
 
@@ -887,7 +881,7 @@ Let's dive into what `mmap` is doing to hypothesize how to add support for shari
 > for each process depending on the libraries they specify and the process' memory layout. It is impossible for a program
 > to be at different points in memory because the addresses in the instructions will be wrong.
 >
-> Very thoughtful! The libraries are instructions, so any pointers you create will be in a different stack for that process. That means that pointers should be correct within each individual process. And remember, even if the library is loaded in a different place, our program can locate the libraries by looking up the symbol in the PLT/GOT. This solves the relocation problem from the perspective of our user program. However, the libraries have the challenge that they cannot rely on using addresses in their code because they do not know where they will get loaded in memory. For symbols that call into other libraries it is easy as we can reuse the same idea of symbol to address lookup tables.
+> Very thoughtful! The libraries are instructions, so any pointers you create will be in a different stack for that process. Pointers should be correct within each individual process. And remember, even if the library is loaded in a different place, our program can locate the libraries by looking up the symbol in the PLT/GOT. This solves the relocation problem from the perspective of our user program. However, the libraries have the challenge that they cannot rely on using fixed addresses in their code because they do not know where they will get loaded in memory. For symbols that call into other libraries it is easy as we can reuse the same idea of symbol to address lookup tables.
 >
 > Recall in assembly you need to specify a destination address to jump to.
 > Luckily, compiler engineers invented [Position Independent Code](https://en.wikipedia.org/wiki/Position-independent_code) (PIC/PIE) to support the shared library use case. Using `gcc` with [`-pie`](https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html) will make the compiler emit instructions that only use relative addressing, allowing it to run from any start address. 
@@ -895,11 +889,17 @@ Let's dive into what `mmap` is doing to hypothesize how to add support for shari
 
 ### Gimme a man
 
-TODO: left off here. we can reverse engineer the syscalls to see if we get any ideas and then read the documentation to find how to support this memory deduplication feature.
+We need to get a better understanding of what the kernel is doing when we load a library to figure out how many processes changes the way libraries get loaded. We can start by reverse engineering the actions the kernel takes in the `strace`. Tracing how the library gets loaded by the `mmap` call should give us some ideas how to support memory sharing.
 
-The `mmap` `man` documentation should explain the behavior of `mmap` along with the `MAP_PRIVATE` flag. `man mmap` notes to check the other manual, so I check `man 2`.
+```c
+mmap(NULL, 3940800, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f59bc89f000
+```
 
-```sh
+The `mmap` `man` documentation explains the behavior of `mmap` and its flags. `man mmap` notes to check the other manual, so I check `man 2 mmap`.
+
+Most of the arguments to `mmap` are self explanatory from the function prototype: `void *mmap(void addr[.length], size_t length, int prot, int flags, int fd, off_t offset);`. However, the flag `MAP_PRIVATE` appears to significant change the way `mmap` operates. 
+
+```
 $ man mmap
 
 MMAP(3P)                                      POSIX Programmer's Manual                                      MMAP(3P)
@@ -964,14 +964,16 @@ DESCRIPTION
               changes made to the file after the mmap() call are visible in the mapped region.
 ```
 
-The `MAP_PRIVATE` flag tells `mmap` to "Create a private copy-on-write mapping". This is a key phrase. Without getting into the weeds of what copy-on-write (COW) entails, this point means that each process' call to map `libc` will conveniently share the same physical memory. There is no coordination needed between processes, nor any special mechanisms in the kernel to support shared libraries.
+The `MAP_PRIVATE` flag tells `mmap` to "Create a private copy-on-write mapping". This is a key phrase. Without getting into the weeds of what copy-on-write (COW) entails, this point means that each process' call to map `libc` will share the same physical memory. There is <u>no</u> coordination needed between processes, <u>nor</u> any special kernel mechanism to support shared libraries.
 
-Wait, so it is magic? Operating systems sure are magic. 
+> :thinking:: Wait, so it is magic? 
+>
+> Operating systems sure are magic. 
 
-The fun part of going deep on things is that you find out that things are just created by people. The world is arbitrary and chaotic. It's easy to think that there is nothing original and everything has been invented, but it is easy to reach the frontier of human knowledge if you try.
-
+By exercising your curiosity, we have quickly reached the frontier of how libraries get loaded.
+The fun part of diving into everyday things is you find out that everything is created by real people.
+I find it immensely rewarding to learn about the history behind how these abstractions have developed.
 The `mmap` docs give us a glimpse into kernel lore.
-I love learning about the history of how the world has developed. 
 
 ```
 RATIONALE
@@ -984,21 +986,20 @@ RATIONALE
        space of a process.
 ```
 
-TODO: high level description of how mmap fits in
-
-> Instructor: Cool. But what sequence of instructions *actually run* to support sharing?
-
-TODO: (what is this supposed to mean) This is hard to test because the Linux kernel does a lot of optimizations. If you don't trust me, you can read the official kernel docs.
+> Instructor: Cool. You know what the docs claim about `mmap`, but what sequence of instructions *actually run* to support sharing?
 
 ## Kernel Sourcerers
 
 Ooh let's look at source code. We are still in the realm of theory and haven't proved our ideas are what gets run.
 
-Instead of pulling the latest kernel, I like using a web search such as livegrep or elixir bootlin.
-We want to find the entrypoint of calling the `mmap` syscall.
-Searching `mmap` does not get anywhere. 
+<div class="notice notice--announcement" markdown="1">
+**This source code explanation is a bit dry. Feel free to skim to the next section.**
+</div>
 
-Stackoverflow tells us that we should [look for `sys_mmap`](https://livegrep.com/search/linux?q=file%3A.c%20sys_mmap%20path%3Aarm64&fold_case=auto&regex=false&context=true) or the macro which defines syscalls [^1].
+Instead of pulling the latest kernel, I like using a web search such as [livegrep](https://livegrep.com/search/linux) or [Elixir bootlin](https://elixir.bootlin.com/linux/v6.13.7/source).
+We want to find the entrypoint of calling the `mmap` syscall.
+Searching "mmap" does not get anywhere. 
+Stackoverflow tells us to [look for `sys_mmap`](https://livegrep.com/search/linux?q=file%3A.c%20sys_mmap%20path%3Aarm64&fold_case=auto&regex=false&context=true) or the macro which defines syscalls [^1].
 
 > [arch/arm64/kernel/sys.c](https://github.com/torvalds/linux/blob/v6.13/arch/arm64/kernel/sys.c#L28)
 > 
@@ -1018,6 +1019,7 @@ The GitHub symbols panel makes it easy to find definitions and references of sym
 GitHub reveals the definition of `ksys_mmap_pgoff` is [in `mmap.c`](https://github.com/torvalds/linux/blob/586de92313fcab8ed84ac5f78f4d2aae2db92c59/mm/mmap.c#L569).
 
 The filename indicates we are in the right place. A manual inspection of this file shows us that the core logic is in [`do_mmap`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/mmap.c#L280).
+Here we have a source code comment telling us the exact mechanics of what is happening. It fills in some of the implementation details.
 
 ```c
 /**
@@ -1035,8 +1037,6 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 			struct list_head *uf)
 { [...] }
 ```
-
-Now here we have a source code comment that tells us the exact mechanics of what is happening. It fills in some of the implementation details.
 
 > [do_mmap()](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/mmap.c#L359-L381)
 > ```c
@@ -1065,8 +1065,7 @@ Now here we have a source code comment that tells us the exact mechanics of what
 > 		return -ENOMEM;
 > ```
 
-You can see all this function does is a lots of permission checking. Here we find the source of truth for the `MAP_PRIVATE` flag.
-[footnote: if you are nachos ucsd you may get confused by mmap semantics. yeah it is copying data but actually if you dont write then the physical pages can get shared. so technically it does require kernel support. mmap is actually a bit different than read/write and the map private isn't copying the data to userspace. TODO: actually look up how mmap works since I'm not sure what hardware support they mean]
+You can see all this function does is a lots of permission checking. Here we find the source of truth for the `MAP_PRIVATE` flag[^semantics].
 
 > [`MAP_PRIVATE` case](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/mmap.c#L469-L482)
 > 
@@ -1098,29 +1097,39 @@ You can see all this function does is a lots of permission checking. Here we fin
 > }
 > ```
 
-Now you have seen how to trace functions by finding the definition of symbols. Once you find a function, tracing backwards from the return code helps to reduce the irrelevant code to sift through.
+I follow this technique to trace functions. I sequentially find the definition of referenced symbols, recursively searching within as needed.
+Once you find a function, tracing backwards from the return code helps to reduce the irrelevant code to sift through.
 
 We repeat tracing the function calls [`mmap_region`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/vma.c#L2509)
 ⟶ [`__mmap_region`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/vma.c#L2434)
 
-[Virtual Memory Areas](https://www.kernel.org/doc/gorman/html/understand/) full details are in this document.
-We can ignore the details about virtual memory. We can focus on the note about the file which is being loaded.
-
-```md
+```c
+/**
+ * mmap_region() - Actually perform the userland mapping of a VMA into
+ * current->mm with known, aligned and overflow-checked @addr and @len, and
+ * correctly determined VMA flags @vm_flags and page offset @pgoff.
+ *
+ * This is an internal memory management function, and should not be used
+ * directly.
+ *
+ * The caller must write-lock current->mm->mmap_lock.
+ *
  * @file: If a file-backed mapping, a pointer to the struct file describing the
  * file to be mapped, otherwise NULL.
 ```
 
+We can ignore the details about virtual memory; the full details of Linux [Virtual Memory Areas](https://www.kernel.org/doc/gorman/html/understand/) are in this document.
+We are focusing on tracing the path to loading the backing library file.
 If you continue tracing you will get stuck. How is the file never actually used in any of this code?
-This dead end is why looking at real OS code can be complicated. We need to first understand what we are looking at.
+This dead end demonstrates why looking at real code gets complicated. We need to first understand what we are looking at.
 
-Linux tries to be as fast as possible. It will not load data from disk unless necessary. Thus, this `mmap` is
-a lie. It is not loading any files. The kernel only sets up page table entries for the virtual memory space.
+Linux tries to be as fast as possible. It will not load data from disk unless necessary. Thus, this `mmap` call is
+a lie. It is not loading any files. The kernel simply sets up page table entries for the virtual memory space.
 
 > Instructor: Can you think about how the OS would know when it has to load a page in?
 
-TODO: reword>
-The pages it marks are valid mapping so the hardware knows that these virtual memory addresses are allowed, but they have not been mapped yet, so the permission bits will indicate that the hardware should fault into the OS in the case that these pages do get accessed.
+The OS can rely on the hardware generating a page fault when the user tries to access this unloaded memory. 
+The OS marks the page table entries as invalid, which causes the hardware to generate a fault. This execution transfer allows the OS to inspect what it should do in response, such as loading the backing memory or killing the process with a segmentation fault.
 
 You might guess that we need to look at the logic on a page fault of one of these addresses. 
 Inside of arm64's `do_page_fault` we see where the memory mapping code gets called
@@ -1155,8 +1164,7 @@ Inside of arm64's `do_page_fault` we see where the memory mapping code gets call
 
 Are you getting a hang of it? 
 The high quality kernel code makes it easy to explore and pick up their naming conventions.
-For example, `do_` functions do the work, `sys_` and `SYSCALL_DEFINE` help you find where syscalls enter, and `__function_name` functions are internal functions that implement all the logic and get called once all permission checks are done.
-
+For example, `do_` functions do the work, `sys_` and `SYSCALL_DEFINE` help you find where syscalls enter, and `__function_name` functions are internal functions that implement core logic and get called after all permission checks.
 Reading unfamiliar code is difficult, but you can follow the same process we have been using: recursively explore function definitions until you understand what the acronyms are, what functions do, and what the jargon means in context.
 
 Going back to `__handle_mm_fault`, you will realize these function calls are not relevant. They have to do with unrelated unhappy paths that can get hit on a page fault. At a high level, this code walks and allocates the multi-level page table.
@@ -1179,52 +1187,53 @@ Going back to `__handle_mm_fault`, you will realize these function calls are not
 > ```
 
 Now the fault must get handled. The backing memory must become valid before the OS can return to the faulted program.
+In our case, the address that faulted is inside `libc`, which needs to be placed into our process' address space from disk.
 
-
-**Overview of Execution Flow**
-
-- Check if the Page Middle Directory (PMD) is present.
-  - If the Page Middle Directory (PMD) entry is missing, it means there is no page table yet.
-  If the PTE is empty (`pte_none()`), then the page is not allocated yet, so we will handle it as a missing page. 
-- Get or allocate a Page Table Entry (PTE).
-    Determine the type of fault and handle it accordingly:
-  - Page is missing → Allocate a new page (`do_pte_missing()`).
-  - Page is swapped out → Swap it back in (`do_swap_page()`).
-  - Page migration/NUMA fault → Handle it (`do_numa_page()`).
-  - Write protection fault → Handle copy-on-write (COW) (`do_wp_page()`).
-  - Otherwise, mark the page as accessed and dirty if needed.
-
+> **Overview of Page Fault Execution Flow**
+> 
+> - Check if the Page Middle Directory (PMD) is present.
+>   - If the Page Middle Directory (PMD) entry is missing, it means there is no page table yet.
+>   If the PTE is empty (`pte_none()`), then the page is not allocated yet, so we will handle it as a missing page. 
+> - Get or allocate a Page Table Entry (PTE).
+>     Determine the type of fault and handle it accordingly:
+>   - Page is missing → Allocate a new page (`do_pte_missing()`).
+>   - Page is swapped out → Swap it back in (`do_swap_page()`).
+>   - Page migration/NUMA fault → Handle it (`do_numa_page()`).
+>   - Write protection fault → Handle copy-on-write (COW) (`do_wp_page()`).
+>   - Otherwise, mark the page as accessed and dirty if needed.
 
 When the faulted page is missing or swapped out, the execution path continues as follows:
 
-- Page is missing → do_pte_missing()
-  - If the mapping is anonymous, a new page is allocated.
-  - If the mapping is file-backed, the function calls filemap_fault() to fetch data from disk.
+> - Page is missing → `do_pte_missing()`
+>   - If the mapping is anonymous, a new page is allocated.
+>   - If the mapping is file-backed, the function calls `filemap_fault()` to fetch data from disk.
+> 
+> - File-backed page → `filemap_fault()`
+>   - If the page is not in memory, it requests disk access via the block layer.
+> 
+> - Disk access happens via the filesystem & block layer
+>   - The requested page is fetched from disk into the page cache.
+>     Once loaded, the page is mapped and execution continues.
 
-- File-backed page → filemap_fault()
-  - If the page is not in memory, it requests disk access via the block layer.
 
-- Disk access happens via the filesystem & block layer
-  - The requested page is fetched from disk into the page cache.
-    Once loaded, the page is mapped and execution continues.
-
-
-⟶ We fall into [`do_pte_missing`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L4053) because the page for this mmap has not been created nor has the file been loaded. 
-
-This page is not a normal stack or heap page, so we need to do work to load the file. 
-
-⟶ [`do_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L5507)
-
-The code branches on the types of faults
-⟶ This is a [`do_read_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L5383)
-⟶ [`__do_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L4961)
+> ⟶ We fall into [`do_pte_missing`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L4053) because the page for this mmap has not been created nor has the file been loaded. 
+> 
+> This page is not a normal stack or heap page, so we need to do work to load the file. 
+> 
+> ⟶ [`do_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L5507)
+> 
+> The code branches on the types of faults
+> ⟶ This is a [`do_read_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L5383)
+> ⟶ [`__do_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/mm/memory.c#L4961)
 
 This leads to a function pointer for the exact fault handler we want to use for this filesystem
 
-This allows the implementation to be general for the exact filesystem being used. [VFS](https://en.wikipedia.org/wiki/Virtual_file_system)
+This layer of indirection ([VFS](https://en.wikipedia.org/wiki/Virtual_file_system)) allows the implementation to be general for the exact filesystem in use. 
+
 ```c
 ret = vma->vm_ops->fault(vmf);
 ```
+
 The types help us figure this out [`struct vm_fault`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/include/linux/mm.h#L560) ⟶ [`vm_area_struct`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/include/linux/mm_types.h#L681) ⟶ [`vm_operations_struct`](https://github.com/torvalds/linux/blob/7eb172143d5508b4da468ed59ee857c6e5e01da6/include/linux/mm.h#L611)
 
 Bingo. We now know what the type of `fault` is: `vm_fault_t (*fault)(struct vm_fault *vmf);`.
@@ -1233,18 +1242,18 @@ Although we have hit a dead end, applying the same exploration tricks gets us to
 
 Let's update our snapshot of our current understanding.
 
-#### Summary of Execution Path
-
-1. The kernel walks the page table in `__handle_mm_fault()`. This generates a page fault.
-1. A missing file-backed page triggers `handle_pte_fault()`.
-1. It calls `do_pte_missing()`, which routes to do_fault().
-1. `do_fault()` identifies the fault as a read fault and calls `do_read_fault()`.
-1. This invokes `vma->vm_ops->fault()`, which for files is `filemap_fault()`.
-1. `filemap_fault()` checks if the page is in the page cache.
-  - If present → Map it into the process and return.
-  - If missing → Request disk I/O via the block layer[^2].
-7. The page is read from disk into the page cache.
-1. The process blocks while the page is mapped, and execution resumes.
+> #### Summary of Execution Path
+> 
+> 1. The kernel walks the page table in `__handle_mm_fault()`. This generates a page fault.
+> 1. A missing file-backed page triggers `handle_pte_fault()`.
+> 1. It calls `do_pte_missing()`, which routes to do_fault().
+> 1. `do_fault()` identifies the fault as a read fault and calls `do_read_fault()`.
+> 1. This invokes `vma->vm_ops->fault()`, which for files is `filemap_fault()`.
+> 1. `filemap_fault()` checks if the page is in the page cache.
+>   - If present → Map it into the process and return.
+>   - If missing → Request disk I/O via the block layer[^2].
+> 7. The page is read from disk into the page cache.
+> 1. The process blocks while the page is mapped, and execution resumes.
 
 This looks much more precise than before!
 We can continue recursively unfolding function defintions. There is a call to `filemap_get_folio` which returns a `folio` type. The type's comment indicates something interesting. 
@@ -1264,43 +1273,37 @@ A `folio` is a reference counted page cache entry. We are loading a new file for
 
 > Instructor: Or will it?
 
-What file are we loading again? We are loading `libc`. Effectively, every program is using `libc`. This file will surely be in memory already. Alas, this file is being used by other processes, so we cannot reuse the file.
+What file are we loading again? We are loading `libc`. Effectively, every program is using `libc`. This file will surely be in memory already. Alas, this file is in use by other processes, so we cannot reuse the file.
 
 > Instructor: Or can we?
 
 Let's look back at the syscall we are executing in the first place.
-Take a look at the flags. We only want to execute `libc`, so actually every program is going to get the same read-only copy of this physical memory mapped into their virtual address spaces.
+Take a look at the flags. We only want to execute `libc`. Thus, every program can share the same read-only copy of this physical memory mapped into their virtual address spaces.
 
-This is magic. There was no coordination between the programs reading this same file. No special mechanisms are being used in the kernel. This is all the same ideas of virtual memory (which uses demand paging) working in harmony to make dynamic library loading work. 
+This is magic. There was no coordination between the programs reading this same file. No special mechanisms are used in the kernel. The same ideas that support virtual memory are working in harmony to make dynamic library loading invisibly work.
 
 Now, let's follow the path when a file-backed page is missing and needs to be read from disk.
 
 > Hardware tries to access an uninitialized page
 > 
-> ⟶ `handle_pte_fault()`: If the page is not present, it calls do_fault().
+> ⟶ `handle_pte_fault()`: If the page is not present, it calls `do_fault()`.
 > 
-> ⟶ `do_fault()`: If the mapping is from a file, it calls filemap_fault().
+> ⟶ `do_fault()`: If the mapping is from a file, it calls `filemap_fault()`.
 > 
-> ⟶ `filemap_fault()`: This function tries to load the missing page from disk. It calls page_cache_read() if the page is not already cached.
+> ⟶ `filemap_fault()`: This function tries to load the missing page from disk. It calls `page_cache_read()` if the page is not already cached.
 > 
 > ⟶ `page_cache_read()` Reads the page from the filesystem's page cache.
 > If the page is not cached, it requests disk access via the block layer.
 
-#### Resources
+There you have it! The library has been mapped into the process from the cache. Our process can continue running with shared libraries, oblivous to all this work the kernel has done in the background. Yet, the kernel did not do anything special to support this one library sharing use case! Every kernel action was on behalf of a user syscall.
 
-For more details on the exact actions to read from disk.
-[blk layer slides](https://www.cs.cornell.edu/courses/cs4410/2021fa/assets/material/lecture24_blk_layer.pdf)
+# Recap
 
-Additional resources:
-[An Introduction to the Linux Kernel Block I/O Stack](https://chemnitzer.linux-tage.de/2021/media/programm/folien/165.pdf)
-[How the Linux VFS, block layer, and device drivers fit together](http://blog.vmsplice.net/2020/04/how-linux-vfs-block-layer-and-device.html)
-[Linux VFS and Block Layers](https://devarea.com/wp-content/uploads/2017/10/Linux-VFS-and-Block.pdf)
-https://www.oreilly.com/library/view/understanding-the-linux/0596005652/ch14s02.html
-[kernel vfs docs](https://www.kernel.org/doc/Documentation/filesystems/vfs.txt)
+![flowchart of library loading steps](/images/spelunking/flow.drawio.png){:style="display:block; margin-left:auto; margin-right:auto" width="100%" }
 
-### It's for the pedagogy [^3]
+## It's for the pedagogy [^3]
 
-> Student: Holupaminnit, how did we get to `printf` and page faults? I thought we were talking about loading binaries?
+> :lying_face:: Holupaminnit, how did we get to `printf` and page faults? I thought we were talking about loading binaries?
 
 Alas, I have tricked you into learning something new. One way to ask this question is to ask
 what happens when there is a `printf` in your code, but I think the framing of our initial
@@ -1308,68 +1311,71 @@ question at the start led us along a more interesting route.
 
 Undoubtedly, there are many other aspects of loading a program I have skipped. The point to
 take home is that exploration is nonlinear. All the irrelevant things we tried while
-inspecting what is going on turned out to be completely relevant! There is a lot going on, but
+inspecting system behavior turned out to be completely relevant! There is a lot going on, but
 I hope you will believe me and believe yourself that you could have figured this out.
-
-I like this approach for figuring this out because it works in general. Particularly for kernel code,
+The approach we took for figuring this puzzle out is great because it works in general. For kernel code,
 the better approach is probably to go directly to kernel documentation and to start reading the
-source code.
+source code. However, documentation is not enough to see what precisely happens beneath the hood and make changes.
 
-# What we didn't cover
+## What we didn't cover
 
-Think about these for yourself. Can you write a C program to test your mental model? Can you spelunk your kernel to find out? Remember, just because LLMs act authoritative, it does not mean they know anything.
+Think about these for yourself.
 
+- Can you write a C program to test your mental model? Can you spelunk your kernel to find out? Remember, just because LLMs act authoritative, it does not mean they know anything.
 - How do we know when a program has finished executing? What does it mean to be the last instruction of the file?
-- How does printf actually work. I think [this post](https://www.maizure.org/projects/printf/index.html) is supremely interesting. I love the presentation of the post and it goes into much more detail than I get into here. If you think you can explain how `printf` works, this is going to humble you.
-- Okay but how is each of these instructions actually executing? What hardware is involved? What is the hardware doing?
+- How does `printf` actually work. [This post](https://www.maizure.org/projects/printf/index.html) is supremely interesting. I love the presentation of the post and it goes into much more detail than I get into here. If you think you can explain how `printf` works, the author will humble you.
+- We stopped at the assembly level, but how is each of these instructions actually executing? What hardware is involved? What is the hardware doing?
 - Can you have multiple versions of the same library installed?
-- Can you explain why the `hello_world.c` program returns `13`? Hint: what does the `void` keyword mean? Where are return values stored?
-- Remaining questions: Why does a simple addition program still load libc? Hint try looking at the output of strace. What is the last system call called by the program?
-- Advanced: can you figure out what dynamic library an address belongs to in the virtual address space of a program on your computer?
+- If you remove the `return` statement in `hello_world.c`, can you explain why the program returns `13`? Hint: what does the `void` keyword mean? Where are return values stored?
+- Why does a simple program with no library calls, such as addition, still load `libc`? Hint: try looking at the output of `strace`. What is the last system call called by the program?
+- Can you figure out what dynamic library an address belongs to in the virtual address space of a program on your computer?
 `$ cat /proc/$(pidof binary_name)/maps`. What is the program being run? You should be able to tell from the sections.
 
-You now have all the tools to learn anything you can possibly want. To retain this knowledge, you must exercise it. Embark on your personal journey of Linux spelunking and discover what happens when you start running a program with the `exec` syscall. You can find a sample solution in the ["The `exec` Functions"](https://www.cs.utexas.edu/~rossbach/cs380p/papers/ulk3.pdf#page=846&zoom=auto,27,416) section of *Understanding the Linux Kernel*.
+You now have all the tools to learn anything you want. To keep this knowledge, you must exercise it. I leave you with a quest: embark on your personal journey of Linux spelunking and discover what happens when you start running a program with the `exec` syscall. You can find a sample solution in the ["The `exec` Functions"](https://www.cs.utexas.edu/~rossbach/cs380p/papers/ulk3.pdf#page=846&zoom=auto,27,416) section of *Understanding the Linux Kernel*. The "How programs get run" series by LWN also has a great explanation ([part 1](https://lwn.net/Articles/630727/), [part 2](https://lwn.net/Articles/631631/)).
 
 
-# Wrapping up
+## Wrapping up
 
 In this post, we demystified how Linux loads processes and discovered how Linux works on a journey that reminds me of the joys of computers and discovery.
 
-The great part about learning things this way is that you feel empowered to learn anything. The power of open source allows us to figure absolutely anything out with enough effort. We also do not need to trust anything. We have looked at the source ourselves and can be quite confident that we have created a mental model accurate to the real world.
+The great part about learning things this way is that you feel empowered to learn anything. The power of open source allows us to figure absolutely anything out with enough effort. We also do not need to trust anything. We looked at the source ourselves and can be quite confident that we have created a mental model accurate to the real world.
 
-I have surely gotten details wrong in the post. I am sorry. Point them out!
-
-Happy exploring.
-
-<!--
-Pierre Habouzit
-
-Think about what it means to load a program. What is a program? (a file) What is a library? (a file) Are programs any different than normal files? (yes, executable. but still just bytes on disk) How does a program modify it's own addr space with a file? (use read() and open() the file, but even better to use mmap since it will handle all the mapping for you) okay now we can load for one program, how to share? what mechanisms need to be added? (nothing, sharing is totally transparent via file cache)
-
-
-we see the kernel does not do anything on its own. everything is on behalf of a request from the process
--->
-
-This post was inspired by this video on linux signals. It's one of the best videos I've ever seen. I rewatch it every few months to remind myself how beautiful it is to be able to understand these precise and complex beasts of machines we use.
+This post was inspired by [this video](https://www.youtube.com/watch?v=d0gS5TXarXc) on Linux signals. It is one of the best videos I have ever seen. I rewatch it every few months to remind myself how beautiful it is to be able to understand these precise and complex beasts which are the machines we use.
 I hope you can appreciate the beauty of the ridiculous world we live in. All it takes is a sense of wonder and you can build anything.
+
+Thank you for reading! This article took me 49 hours over 8 weeks.
+I have surely gotten details wrong in the post. I am sorry. Point them out!
+Please email me any feedback at `process-loading <at> this domain` or leave it in the comments below. 
+
+The objective is curiosity maximization.
+Happy exploring.
 
 ### Further Reading:
 
-- best resource I have found on shared libraries: [How To Write Shared Libraries by Ulrich Drepper](https://www.akkadia.org/drepper/dsohowto.pdf)
+- Best resource I have found on shared libraries: [How To Write Shared Libraries by Ulrich Drepper](https://www.akkadia.org/drepper/dsohowto.pdf)
 - [Dynamic linker wiki](https://en.wikipedia.org/wiki/Dynamic_linker)
 - [`mmap` wiki](https://en.wikipedia.org/wiki/Mmap)
 - [How statically linked programs run on Linux (and how you get from libc to the start symbol)](https://eli.thegreenplace.net/2012/08/13/how-statically-linked-programs-run-on-linux)
-- http://s.eresi-project.org/inc/articles/elf-rtld.txt
+- [Understanding Linux ELF RTLD internals](http://s.eresi-project.org/inc/articles/elf-rtld.txt)
 - [GOT and PLT for pwning](https://systemoverlord.com/2017/03/19/got-and-plt-for-pwning.html)
 - `man ld.so`: Describes in detail all the places dynamic libraries come from and how you indicate what gets loaded.
   - `ldd` trivia: it has arbitrary code execution
 - Try compiling some files and disassmbling them. Here are some flags to make it more readable. `objdump --disassemble=main  --no-show-raw-insn --visualize-jumps --disassembler-color=on a.out | less`
 - ["Libraries" part of *Understanding the Linux Kernel, 3rd Edition*](https://www.cs.utexas.edu/~rossbach/cs380p/papers/ulk3.pdf#page=834&zoom=auto,27,390)
 - [a similar blog post](https://sysadvent.blogspot.com/2010/12/day-15-down-ls-rabbit-hole.html) for tracing `ls`
+- [Anatomy of a system call part 1](https://lwn.net/Articles/604287/), [part 2](https://lwn.net/Articles/604515/)
+- [You can be a wizard](https://jvns.ca/wizard-zine.pdf)
 
-The objective is curiosity maximization.
+Resources for filesystem details I glossed over:
+- For more details on the exact actions to read from disk, [blk layer slides](https://www.cs.cornell.edu/courses/cs4410/2021fa/assets/material/lecture24_blk_layer.pdf)
+- [An Introduction to the Linux Kernel Block I/O Stack](https://chemnitzer.linux-tage.de/2021/media/programm/folien/165.pdf)
+- [How the Linux VFS, block layer, and device drivers fit together](http://blog.vmsplice.net/2020/04/how-linux-vfs-block-layer-and-device.html)
+- [Linux VFS and Block Layers](https://devarea.com/wp-content/uploads/2017/10/Linux-VFS-and-Block.pdf)
+- [The Generic Block Layer](https://www.oreilly.com/library/view/understanding-the-linux/0596005652/ch14s02.html) from Understanding the Linux Kernel
+- [kernel VFS docs](https://www.kernel.org/doc/Documentation/filesystems/vfs.txt)
 
-I tried to make the logical steps explicit. If anything was unclear, please send me an email or leave a comment. When you are debugging for real, you should reach directly to the best tool for the job instead of the winding path I took. For example, I used `vim` to open files just to show that binary is not scary. You would never look at a binary in a normal text editor like vim -- reach directly for `objdump` or `readelf`. If high level tools don't work, then you can use a hex viewer. 
+
+I tried to make every logical jump explicit as an educational method. When you are debugging for real, you should reach to the best tool for the job instead of the winding path I took. For example, I used `vim` to open files to show that binary is not scary. You would never look at a binary in a normal text editor like `vim`--reach directly for `objdump` or `readelf`. If high level tools don't work, then you can use a hex viewer. 
 
 Another much faster path to figuring out what a program does is to use a disassembler. We were manually going through the process of a small part of what disassemblers can automatically do for us.
 This would have shown what `hello_world.c` is actually doing as something like this
@@ -1386,32 +1392,11 @@ Of course, there is a lot more code running. You can use a full-fat disassembler
 
 ---
 
-Thank you for reading! Please email me any feedback at `process-loading <at> this domain` or leave it in the comments below. This article took me x hours over x weeks.
-
-Footnote:
-
-Nachos is confusing because semantics do not quite match linux
-confused the semantics of mmap and readVM/writeVM.
-
 [^1]: footnote: path to finding this is using this post https://stackoverflow.com/questions/14542348/how-to-find-a-definition-of-a-specific-syscall-in-linux-sources and then use regex "." syntax to find the definition of mmap
-[^2]: How Data is Fetched from Disk
-If the requested page is not in the page cache, execution proceeds as follows:
-
-- `block_page_mkwrite()` or `ext4_filemap_fault()` is called, depending on the filesystem.
-- The page is checked in the page cache:
-  - present → mapped into the process.
-  - not present → function requests a disk read via the block I/O layer.
-- The request goes through the I/O scheduler and block device driver.
-- The disk fetches the page into the page cache.
-- The page is marked present, and the fault handling completes.
-
 [^3]:[The true meaning of teaching](https://www.youtube.com/watch?v=bYv_Jcd27Gc)
 [^debug]: A good POV of the [debugging mental model](https://blog.regehr.org/archives/199)
 [^5]: [Great lecture explaining PLT and GOT](https://www.youtube.com/watch?v=Ss2e6JauS0Y)
 [^entrypoint]: It's conventionally called `_start`, but in reality the initial point of execution is determined by the entrypoint of the (ELF) header. Further reading: [one](https://stackoverflow.com/a/36165001), [two](https://unix.stackexchange.com/questions/588240/what-mandates-the-start-entrypoint-kernel-ld-linux-so-etc).
-[^shebang]: It's the exact same! Having a file start with the bytes `#!` indicates that the file should be [interpeted as a script](https://elixir.bootlin.com/linux/v6.14-rc6/source/fs/binfmt_script.c). I'll keep hammering the point home. Everything is just bits at the end of the day. An executable is not different than other files stored on your disk. Let's take this idea to the extreme: you can write an executable directly in a text editor. ISN'T THAT CRAZY? Kay Lack has a [beautiful video](https://youtu.be/cX5tQJhuNeY) demonstrating manually writing an ELF file and Steve Chamberlin has a great [blog post](https://www.bigmessowires.com/2015/10/08/a-handmade-executable-file/) where he does this on Windows.
+[^shebang]: It's the exact same! Having a file start with the bytes `#!` indicates that the file should be [interpeted as a script](https://elixir.bootlin.com/linux/v6.14-rc6/source/fs/binfmt_script.c). I'll keep hammering the point home. Everything is only bits at the end of the day. An executable is not different than other files stored on your disk. Let's take this idea to the extreme: you can write an executable directly in a text editor. ISN'T THAT CRAZY? Kay Lack has a [beautiful video](https://youtu.be/cX5tQJhuNeY) demonstrating manually writing an ELF file and Steve Chamberlin has a great [blog post](https://www.bigmessowires.com/2015/10/08/a-handmade-executable-file/) where he does this on Windows.
 [^diagram_shm]: Image from *Win32 API Programming with Visual Basic* by Steven Roman page 212.
-
-
-
-
+[^semantics]: If you have used [Nachos](https://en.wikipedia.org/wiki/Not_Another_Completely_Heuristic_Operating_System) or are only familiar with using `read`/`write` with files, you may get confused by `mmap` semantics. `mmap` does copy data from disk to memory, but if the process does not modify the data, then the physical pages can be shared. Technically, sharing libraries does require this much kernel support.
