@@ -68,7 +68,7 @@ What was that output??? My terminal gets flooded with nautilus' tens of thousand
 
 ### Load "Hello World"
 
-Instead, we can write a minimal `hello_world.c` program to test with. What happens when the kernel loads this program and prints some text?
+Instead, we can write a minimal `hello_world.c` program to test with[^assets]. What happens when the kernel loads this program and prints some text?
 
 ```c
 #include <stdio.h>
@@ -1392,6 +1392,7 @@ Of course, there is a lot more code running. You can use a full-fat disassembler
 
 ---
 
+[^assets]: The code I ran is available at godsped.com/files/{explore_plt.c, hello_name.c, hello_name.strace, hello_world.c, hello_world_skeptic.c, hello_world.strace}.
 [^1]: footnote: path to finding this is using this post https://stackoverflow.com/questions/14542348/how-to-find-a-definition-of-a-specific-syscall-in-linux-sources and then use regex "." syntax to find the definition of mmap
 [^3]:[The true meaning of teaching](https://www.youtube.com/watch?v=bYv_Jcd27Gc)
 [^debug]: A good POV of the [debugging mental model](https://blog.regehr.org/archives/199)
