@@ -5,7 +5,7 @@ date: 2025-04-15
 tags:
   - research
 header:
-  teaser: "images/binary-room/overview.png"
+  teaser: "binary-room/overview.png"
 excerpt: This report outlines how we implemented static binary translation from RISC-V to ARM binaries.
 ---
 
