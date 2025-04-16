@@ -4,6 +4,7 @@ permalink: /process-loading/
 date: 2025-04-13
 tags:
   - research
+  - recommended read
 header:
   teaser: "spelunking/flow.drawio.png"
 excerpt: In this post, we will demystify how Linux loads processes and discover how Linux works on a journey that reminds me of the joys of computers and discovery.
