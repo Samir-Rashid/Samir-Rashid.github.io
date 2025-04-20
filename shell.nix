@@ -16,10 +16,13 @@ let jekyll_env = bundlerEnv rec {
 in
   stdenv.mkDerivation rec {
     name = "jekyll";
-    buildInputs = [ jekyll_env bundler ruby zlib ];
+    buildInputs = [ jekyll_env bundler ruby zlib nodejs_23 ];
 
+    # need to update the main.min.js if you edit js files
     shellHook = ''
       # alias make='${jekyll_env}/bin/jekyll serve -l -H localhost'
+      npm i
+      npm run uglify
       exec ${jekyll_env}/bin/jekyll serve --watch --force_polling --future
     '';
   }
