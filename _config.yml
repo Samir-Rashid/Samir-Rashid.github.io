@@ -137,6 +137,7 @@ facebook:
   username               :
   app_id                 :
   publisher              :
+                          # og needs to be kept in sync with https://github.com/Samir-Rashid/Samir-Rashid.github.io/settings "Social preview"
 og_image                 : /images/github.png # Open Graph/Twitter default site image
 # For specifying social profiles
 # - https://developers.google.com/structured-data/customize/social-profiles
