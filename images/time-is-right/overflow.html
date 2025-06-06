@@ -1,0 +1,87 @@
+<style scoped>
+  .timeline-container {
+      position: relative;
+      width: 100%;
+      height: 50px;
+      background-color: #ddd;
+      border-radius: 25px;
+      overflow: hidden;
+  }
+
+  .arrow {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background-color: #ff5722;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      animation: moveArrow 5s linear infinite;
+      transform: rotate(0deg);
+      bottom: 0; /* Position arrow at the bottom */
+  }
+
+  .now-dot {
+      position: absolute;
+      right: 80px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      background-color: #4caf50;
+      border-radius: 50%;
+  }
+
+  .time-display {
+      position: relative;
+      top: 20px;
+      font-size: 40px;
+      color: #333;
+      text-align: center;
+      width: 100%;
+  }
+
+  @keyframes moveArrow {
+      0% { left: -30px; }
+      100% { left: calc(100% + 30px); }
+  }
+</style>
+
+
+<div class="timeline-container">
+    <div class="arrow" id="arrow"></div>
+    <div class="now-dot" id="now-dot"></div> <!-- This is located at 1083 -->
+</div>
+<div class="time-display" id="timeDisplay">The time to do this is 0</div>
+
+<script>
+    const arrow = document.getElementById('arrow');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const timelineWidth = document.querySelector('.timeline-container').offsetWidth;
+    const nowDotPosition = document.getElementById('now-dot').getBoundingClientRect().left; 
+    let overflowed = false;
+
+    function updateTime() {
+        const arrowPosition = arrow.getBoundingClientRect().left;
+        // const distanceToNow = Math.abs(arrowPosition - nowDotPosition);
+        // console.log(nowDotPosition);
+        // console.log(arrowPosition);
+
+        // Change behavior once overflowed
+        if (overflowed) {
+            timeDisplay.textContent = `The time to do this is in ${410000 - Math.round(arrowPosition - timelineWidth + nowDotPosition)} days`;
+            return;
+        }
+        
+        if (arrowPosition < nowDotPosition - 300) {
+            // timeDisplay.textContent = 'soon';
+            timeDisplay.textContent = `SOON\nThe time to do this is in ${570 - Math.round(arrowPosition - timelineWidth + nowDotPosition)} days`;
+        } else if (arrowPosition >= nowDotPosition - 0) {
+            timeDisplay.textContent = 'now'; 
+        } else {
+            overflowed = true;
+            timeDisplay.textContent = `The time to do this is in ${Math.round(arrowPosition - timelineWidth + nowDotPosition)} days`;
+        }
+    }
+
+    setInterval(updateTime, 100); // Update the time display every 100ms
+</script> 
+
