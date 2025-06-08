@@ -14,10 +14,13 @@ layout: default
 
 <div id="main" role="main">
   {% include sidebar.html %}
-
   <div class="archive">
     {% unless page.header.overlay_color or page.header.overlay_image %}
-      <h1 class="page__title">{{ page.title }}</h1>
+      <h1 class="page__title">{{ page.title }}
+      {% if page.title == "Blog posts" %}
+      <a href="/feed.xml" style="text-transform:uppercase;color:inherit;text-decoration:none;font-size:0.5em;"><i class="fa fa-fw fa-rss-square" style="color:#fa9b39" aria-hidden="true"></i> Feed</a>
+      {% endif %}
+      </h1>
     {% endunless %}
     {{ content }}
   </div>
