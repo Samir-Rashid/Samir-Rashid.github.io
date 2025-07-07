@@ -38,6 +38,7 @@ date: 2024-10-06
 | [Paprika](https://www.themoviedb.org/movie/4977) | 2007 | what dreams are made of |
 | [Parasite](https://www.themoviedb.org/movie/496243) | 2019 |  |
 | [Perfect Days](https://www.themoviedb.org/movie/976893-perfect-days) | 2023 |  |
+| [Pinocchio (Guillermo del Toro)](https://www.themoviedb.org/movie/555604-guillermo-del-toro-s-pinocchio) | 2022 |  |
 | [Rab Ne Bana Di Jodi](https://www.themoviedb.org/movie/14072) | 2008 |  |
 | [The Silence of the Lambs](https://www.themoviedb.org/movie/274-the-silence-of-the-lambs) | 1991 |  |
 | [Spider-Man: Into the Spider-Verse](https://www.themoviedb.org/movie/324857-spider-man-into-the-spider-verse) | 2018 | mindblowing animation and music |

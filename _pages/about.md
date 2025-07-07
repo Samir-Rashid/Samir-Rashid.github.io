@@ -60,8 +60,8 @@ I'd love to talk about anything! Feel free to suggest a time that works [here](h
 - 🪐 intellectualizing at night
 - 📰 current favorite [Wikipedia article](https://en.wikipedia.org/wiki/Corrupted_Blood_incident)
 - 🦍 current favorite [game](https://store.steampowered.com/app/1533390/Gorilla_Tag/)
-- 🐳 current favorite [movie](https://en.wikipedia.org/wiki/The_Whale_(2022_film))
-- 📜 some favorite research papers: [THE](https://dl.acm.org/doi/pdf/10.1145/363095.363143), [Scheduler Activations](https://dl.acm.org/doi/pdf/10.1145/146941.146944), [Singularity](https://courses.cs.washington.edu/courses/cse551/15sp/papers/singularity-osr07.pdf), [RLBox](https://www.usenix.org/system/files/sec20-narayan.pdf), [Encapsulated Functions](https://dl.acm.org/doi/pdf/10.1145/3625275.3625397)
+- 🐳 current favorite [movie](https://www.themoviedb.org/movie/555604-guillermo-del-toro-s-pinocchio)
+- 📜 some favorite research papers: [THE](https://dl.acm.org/doi/pdf/10.1145/363095.363143), [Scheduler Activations](https://dl.acm.org/doi/pdf/10.1145/146941.146944), [Singularity](https://courses.cs.washington.edu/courses/cse551/15sp/papers/singularity-osr07.pdf), [RLBox](https://www.usenix.org/system/files/sec20-narayan.pdf), [Omniglot](https://patpannuto.com/pubs/schuermann2025omniglot.pdf)
 
 ### Quotes
 
