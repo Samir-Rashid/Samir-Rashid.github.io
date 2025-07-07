@@ -26,6 +26,23 @@ The first thing you may note is that this question is a bit odd. There are sever
 This is a good point. However, a priori, I cannot know what the correct question to ask is.
 Our expedition begins assuming basic C knowledge and becomes more complex. We will learn about the Linux kernel and its internal mechanisms from scratch.
 
+<div class="quote-author">Roadmap</div>
+<div class="quote-body" markdown="1">
+
+1. Trace Simple Program
+- Try decoding thousands of system calls with `strace` and discover `printf` is not in the program
+2. Binary Archaeology
+- Crack compiled programs with `objdump` and `readelf`
+- Find a PLT and GOT that are calling nonexistent functions
+3. Shared Libraries
+- Explore the loading of `libc` and the dynamic linker `ld-linux.so`
+4. Kernel Mechanisms
+- Follow how `mmap`, page faults, and copy-on-write support efficient library sharing
+5. Piecing the Puzzle
+- Connect the path from `execve` to `main` with general purpose kernel mechanisms
+- Entirely understand how Linux brings bytes on disk to life as processes :zombie:
+</div>
+
 {% include toc %}
 
 <br>
@@ -667,7 +684,7 @@ If we look back at the `strace` and search for this address `0x403fe8`, we will 
 mprotect(0x403000, 4096, PROT_READ)     = 0
 ```
 This line makes the table entries read only. The pwning blog post in [further reading](#further-reading) explains more.
-In context of our program, this means that the entire GOT got resolved and then marked as read only for security.
+In context of our program, this means that the entire GOT got resolved and then marked as read only for security[^RELRO].
 
 <details markdown="1">
   <summary>Exercise: What does print statement at the end of the above `gdb` code block print at different breakpoints in the function? Why?</summary>
@@ -1300,6 +1317,18 @@ There you have it! The library has been mapped into the process from the cache. 
 
 # Recap
 
+The solution is elegant: **there is no special "dynamic linking" support in the kernel**.
+
+These general purpose mechanisms are used:
+- `mmap()` with `MAP_PRIVATE` creates copy-on-write mappings
+- *Page faults* trigger on-demand loading
+- The *page cache* automatically shares identical file content between processes
+- *Virtual memory* lets each process see libraries at different addresses while sharing the same physical memory
+
+**At a high level:**
+![actions in userspace and kernel space](/images/spelunking/recap.svg){:style="display:block; margin-left:auto; margin-right:auto" width="100%" }
+
+**More precisely:**
 ![flowchart of library loading steps](/images/spelunking/flow.drawio.png){:style="display:block; margin-left:auto; margin-right:auto" width="100%" }
 
 ## It's for the pedagogy [^3]
@@ -1360,7 +1389,7 @@ Happy exploring.
 - [Understanding Linux ELF RTLD internals](http://s.eresi-project.org/inc/articles/elf-rtld.txt)
 - [GOT and PLT for pwning](https://systemoverlord.com/2017/03/19/got-and-plt-for-pwning.html)
 - `man ld.so`: Describes in detail all the places dynamic libraries come from and how you indicate what gets loaded.
-  - `ldd` trivia: it has arbitrary code execution
+  - `ldd` trivia: it has [arbitrary code execution](https://catonmat.net/ldd-arbitrary-code-execution) as it may [run the target binary](https://man7.org/linux/man-pages/man1/ldd.1.html)
 - Try compiling some files and disassmbling them. Here are some flags to make it more readable. `objdump --disassemble=main  --no-show-raw-insn --visualize-jumps --disassembler-color=on a.out | less`
 - ["Libraries" part of *Understanding the Linux Kernel, 3rd Edition*](https://www.cs.utexas.edu/~rossbach/cs380p/papers/ulk3.pdf#page=834&zoom=auto,27,390)
 - [a similar blog post](https://sysadvent.blogspot.com/2010/12/day-15-down-ls-rabbit-hole.html) for tracing `ls`
@@ -1375,6 +1404,7 @@ Resources for filesystem details I glossed over:
 - [The Generic Block Layer](https://www.oreilly.com/library/view/understanding-the-linux/0596005652/ch14s02.html) from Understanding the Linux Kernel
 - [kernel VFS docs](https://www.kernel.org/doc/Documentation/filesystems/vfs.txt)
 
+- If you want extreme detail on Linux Virtual Memory, there's an [entire book](https://www.kernel.org/doc/gorman/pdf/understand.pdf). The ["Page Faulting" section](https://www.kernel.org/doc/gorman/pdf/understand.pdf#page=94) is a good supplement to this post.
 
 I tried to make every logical jump explicit as an educational method. When you are debugging for real, you should reach to the best tool for the job instead of the winding path I took. For example, I used `vim` to open files to show that binary is not scary. You would never look at a binary in a normal text editor like `vim`--reach directly for `objdump` or `readelf`. If high level tools don't work, then you can use a hex viewer. 
 
@@ -1402,3 +1432,4 @@ Of course, there is a lot more code running. You can use a full-fat disassembler
 [^shebang]: It's the exact same! Having a file start with the bytes `#!` indicates that the file should be [interpeted as a script](https://elixir.bootlin.com/linux/v6.14-rc6/source/fs/binfmt_script.c). I'll keep hammering the point home. Everything is only bits at the end of the day. An executable is not different than other files stored on your disk. Let's take this idea to the extreme: you can write an executable directly in a text editor. ISN'T THAT CRAZY? Kay Lack has a [beautiful video](https://youtu.be/cX5tQJhuNeY) demonstrating manually writing an ELF file and Steve Chamberlin has a great [blog post](https://www.bigmessowires.com/2015/10/08/a-handmade-executable-file/) where he does this on Windows.
 [^diagram_shm]: Image from *Win32 API Programming with Visual Basic* by Steven Roman page 212.
 [^semantics]: If you have used [Nachos](https://en.wikipedia.org/wiki/Not_Another_Completely_Heuristic_Operating_System) or are only familiar with using `read`/`write` with files, you may get confused by `mmap` semantics. `mmap` does copy data from disk to memory, but if the process does not modify the data, then the physical pages can be shared. Technically, sharing libraries does require this much kernel support.
+[^RELRO]: The system you are using probably resolves all symbols at startup so that GOT overwrite attacks cannot happen. This security feature is called Full RELRO and is enabled by the [`BIND_NOW` flag](https://stackoverflow.com/questions/62527697/why-does-gcc-link-with-z-now-by-default-although-lazy-binding-is-the-default).
