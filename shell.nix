@@ -16,7 +16,7 @@ let jekyll_env = bundlerEnv rec {
 in
   stdenv.mkDerivation rec {
     name = "jekyll";
-    buildInputs = [ jekyll_env bundler ruby zlib nodejs_23 ];
+    buildInputs = [ jekyll_env bundler ruby zlib nodejs_24 ];
 
     # need to update the main.min.js if you edit js files
     shellHook = ''
