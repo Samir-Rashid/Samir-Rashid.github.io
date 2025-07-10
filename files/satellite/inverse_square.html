@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: white;
+            color: black;
+        }
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let mouseX = 0, mouseY = 0;
+        let rotationX = -0.3, rotationY = 0;
+        let isDragging = false;
+        let lastMouseX = 0, lastMouseY = 0;
+
+        // Animation variables
+        let time = 0;
+        const waves = [];
+
+        // 3D projection parameters
+        const focal = 800;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 3D to 2D projection
+        function project(x, y, z) {
+            const cosX = Math.cos(rotationX);
+            const sinX = Math.sin(rotationX);
+            const cosY = Math.cos(rotationY);
+            const sinY = Math.sin(rotationY);
+
+            // Rotate around Y axis
+            const x1 = x * cosY - z * sinY;
+            const z1 = x * sinY + z * cosY;
+
+            // Rotate around X axis
+            const y1 = y * cosX - z1 * sinX;
+            const z2 = y * sinX + z1 * cosX;
+
+            // Project to 2D
+            const scale = focal / (focal + z2);
+            const x2d = x1 * scale + width / 2;
+            const y2d = y1 * scale + height / 2;
+
+            return { x: x2d, y: y2d, scale: scale, z: z2 };
+        }
+
+        // Mouse controls
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+                rotationY += deltaX * 0.01;
+                rotationX += deltaY * 0.01;
+                rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+        });
+
+        // Touch controls for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            lastMouseX = e.touches[0].clientX;
+            lastMouseY = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                const deltaX = e.touches[0].clientX - lastMouseX;
+                const deltaY = e.touches[0].clientY - lastMouseY;
+                rotationY += deltaX * 0.01;
+                rotationX += deltaY * 0.01;
+                rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
+                lastMouseX = e.touches[0].clientX;
+                lastMouseY = e.touches[0].clientY;
+            }
+        });
+
+        canvas.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Create waves periodically
+        // Ensure only ONE outgoing sphere exists at any moment. When the tab is in the background,
+        // animation frames are throttled, but this interval keeps firing. That used to queue up many
+        // spheres because we always pushed a new one. By adding the conditional check below we make
+        // sure we only create a new sphere when the previous one has finished (i.e. `waves` is empty).
+        setInterval(() => {
+            if (waves.length === 0) {
+                waves.push({
+                    radius: 0,
+                    opacity: 1
+                });
+            }
+        }, 2000);
+
+        function drawSphere(x, y, z, radius, color, opacity = 1) {
+            const numCircles = 12;
+            const numPoints = 32;
+
+            ctx.globalAlpha = opacity;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+
+            // Draw latitude circles
+            for (let i = 0; i < numCircles; i++) {
+                const lat = (i / (numCircles - 1) - 0.5) * Math.PI;
+                const circleRadius = Math.cos(lat) * radius;
+                const circleY = Math.sin(lat) * radius;
+
+                ctx.beginPath();
+                for (let j = 0; j <= numPoints; j++) {
+                    const angle = (j / numPoints) * Math.PI * 2;
+                    const px = x + Math.cos(angle) * circleRadius;
+                    const py = y + circleY;
+                    const pz = z + Math.sin(angle) * circleRadius;
+                    const proj = project(px, py, pz);
+                    
+                    if (j === 0) {
+                        ctx.moveTo(proj.x, proj.y);
+                    } else {
+                        ctx.lineTo(proj.x, proj.y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // Draw longitude circles
+            for (let i = 0; i < numCircles; i++) {
+                const lon = (i / numCircles) * Math.PI * 2;
+
+                ctx.beginPath();
+                for (let j = 0; j <= numPoints; j++) {
+                    const lat = (j / numPoints - 0.5) * Math.PI;
+                    const px = x + Math.cos(lat) * Math.cos(lon) * radius;
+                    const py = y + Math.sin(lat) * radius;
+                    const pz = z + Math.cos(lat) * Math.sin(lon) * radius;
+                    const proj = project(px, py, pz);
+                    
+                    if (j === 0) {
+                        ctx.moveTo(proj.x, proj.y);
+                    } else {
+                        ctx.lineTo(proj.x, proj.y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            ctx.globalAlpha = 1;
+        }
+
+        function drawTransmitter(x, y, z) {
+            const proj = project(x, y, z);
+            
+            // Draw tower icon
+            ctx.strokeStyle = '#0066ff';
+            ctx.lineWidth = 3 * proj.scale;
+            ctx.fillStyle = '#0066ff';
+            
+            // Tower triangle
+            ctx.beginPath();
+            ctx.moveTo(proj.x, proj.y - 25 * proj.scale);
+            ctx.lineTo(proj.x - 15 * proj.scale, proj.y + 15 * proj.scale);
+            ctx.lineTo(proj.x + 15 * proj.scale, proj.y + 15 * proj.scale);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Tower cross beams
+            ctx.beginPath();
+            ctx.moveTo(proj.x - 10 * proj.scale, proj.y);
+            ctx.lineTo(proj.x + 10 * proj.scale, proj.y);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(proj.x - 5 * proj.scale, proj.y - 10 * proj.scale);
+            ctx.lineTo(proj.x + 5 * proj.scale, proj.y - 10 * proj.scale);
+            ctx.stroke();
+            
+            // Signal waves on top
+            ctx.strokeStyle = '#0066ff';
+            ctx.lineWidth = 2 * proj.scale;
+            for (let i = 1; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.arc(proj.x, proj.y - 25 * proj.scale, i * 5 * proj.scale, -Math.PI * 0.6, -Math.PI * 0.4);
+                ctx.stroke();
+            }
+
+            // Label
+            ctx.fillStyle = 'black';
+            ctx.font = `bold ${16 * proj.scale}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText('Transmitter', proj.x, proj.y + 35 * proj.scale);
+        }
+
+        function drawReceiver(x, y, z, color, label, distance) {
+            const proj = project(x, y, z);
+            
+            // Draw handheld radio icon
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3 * proj.scale;
+            
+            // Radio body
+            ctx.strokeRect(proj.x - 8 * proj.scale, proj.y - 10 * proj.scale, 16 * proj.scale, 20 * proj.scale);
+            
+            // Screen/speaker area
+            ctx.fillRect(proj.x - 5 * proj.scale, proj.y - 7 * proj.scale, 10 * proj.scale, 8 * proj.scale);
+            
+            // Antenna
+            ctx.beginPath();
+            ctx.moveTo(proj.x + 6 * proj.scale, proj.y - 10 * proj.scale);
+            ctx.lineTo(proj.x + 6 * proj.scale, proj.y - 20 * proj.scale);
+            ctx.stroke();
+            
+            // Antenna tip
+            ctx.beginPath();
+            ctx.arc(proj.x + 6 * proj.scale, proj.y - 20 * proj.scale, 2 * proj.scale, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Signal waves from antenna
+            ctx.lineWidth = 2 * proj.scale;
+            ctx.strokeStyle = color;
+            for (let i = 1; i <= 2; i++) {
+                ctx.beginPath();
+                ctx.arc(proj.x + 6 * proj.scale, proj.y - 20 * proj.scale, i * 4 * proj.scale, -Math.PI * 0.7, -Math.PI * 0.3);
+                ctx.stroke();
+            }
+            
+            // Label
+            ctx.fillStyle = color;
+            ctx.font = `bold ${14 * proj.scale}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText(label, proj.x, proj.y + 30 * proj.scale);
+            
+            // Signal strength
+            const strength = calculateSignalStrength(distance);
+            ctx.fillStyle = 'black';
+            ctx.font = `bold ${18 * proj.scale}px sans-serif`;
+            ctx.fillText(`${strength.toFixed(0)}%`, proj.x, proj.y + 50 * proj.scale);
+        }
+
+        function calculateSignalStrength(distance) {
+            // Normalize to 100% at distance 100
+            return (10000 / (distance * distance)) * 100;
+        }
+
+        function animate() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+
+            time += 0.016; // ~60 FPS
+
+            // Update and draw waves
+            for (let i = waves.length - 1; i >= 0; i--) {
+                const wave = waves[i];
+                wave.radius += 3;
+                wave.opacity = Math.max(0, 1 - wave.radius / 400);
+                
+                if (wave.opacity > 0 && wave.radius < 350) {
+                    drawSphere(0, 0, 0, wave.radius, `rgba(0, 100, 255, ${wave.opacity * 0.8})`, wave.opacity * 0.7);
+                } else if (wave.radius >= 350) {
+                    waves.splice(i, 1);
+                }
+            }
+
+            // Draw transmitter
+            drawTransmitter(0, 0, 0);
+
+            // Draw receivers
+            const receiver1Distance = 100;
+            const receiver2Distance = 200;
+            
+            drawReceiver(receiver1Distance, 0, 0, '#00aa00', 'Receiver 1', receiver1Distance);
+            drawReceiver(receiver2Distance, 0, 0, '#cc0000', 'Receiver 2', receiver2Distance);
+
+            // Draw signal lines
+            ctx.globalAlpha = 0.3;
+            ctx.strokeStyle = '#00aa00';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            const txProj = project(0, 0, 0);
+            const rx1Proj = project(receiver1Distance, 0, 0);
+            ctx.moveTo(txProj.x, txProj.y);
+            ctx.lineTo(rx1Proj.x, rx1Proj.y);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#cc0000';
+            ctx.beginPath();
+            const rx2Proj = project(receiver2Distance, 0, 0);
+            ctx.moveTo(txProj.x, txProj.y);
+            ctx.lineTo(rx2Proj.x, rx2Proj.y);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+
+            // Draw title
+            ctx.fillStyle = 'black';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Inverse Square Law: Signal Strength ∝ 1/distance²', width / 2, 40);
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

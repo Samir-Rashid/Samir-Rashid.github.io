@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: black;
+            color: white;
+        }
+        canvas {
+            display: block;
+        }
+        .counters {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            background: rgba(0,0,0,0.8);
+            padding: 10px 30px;
+            border-radius: 8px;
+            border: 2px solid #666;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        .counter {
+            margin: 0;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .leo { color: #00ff00; }
+        .geo { color: #ff6666; }
+        .timing {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="counters">
+        <div class="counter leo">
+            LEO Roundtrips: <span id="leoCount">0</span>
+            <div class="timing">3.43ms per roundtrip</div>
+        </div>
+        <div class="counter geo">
+            GEO Roundtrips: <span id="geoCount">0</span>
+            <div class="timing">240ms per roundtrip</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        
+        // Satellite altitudes in km
+        const LEO_ALTITUDE = 550;
+        const GEO_ALTITUDE = 35786;
+        const EARTH_RADIUS = 6371;
+        
+        // Round trip times in ms
+        const LEO_ROUNDTRIP_TIME = 3.43;
+        const GEO_ROUNDTRIP_TIME = 240;
+        
+        // Animation slowdown factor for visibility
+        const TIME_SLOWDOWN = 200; // Slow down 200x for visibility
+        
+        // Effective round trip times for animation
+        const LEO_ANIMATION_TIME = LEO_ROUNDTRIP_TIME * TIME_SLOWDOWN;
+        const GEO_ANIMATION_TIME = GEO_ROUNDTRIP_TIME * TIME_SLOWDOWN;
+        
+        // Animation state
+        let time = 0;
+        let leoPing = null;
+        let geoPing = null;
+        let leoRoundtrips = 0;
+        let geoRoundtrips = 0;
+        
+        // Stars
+        const stars = [];
+        for (let i = 0; i < 150; i++) {
+            stars.push({
+                x: Math.random(),
+                y: Math.random(),
+                size: Math.random() * 1.5 + 0.5,
+                twinkle: Math.random() * Math.PI * 2
+            });
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        
+        function drawStars() {
+            stars.forEach(star => {
+                const opacity = 0.4 + Math.sin(star.twinkle + time * 0.00005) * 0.3;
+                ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                ctx.beginPath();
+                ctx.arc(star.x * width, star.y * height, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawEarth(time) {
+            const radius = 100; // Fixed size for Earth
+            const centerX = 150; // Fixed position on left
+            const centerY = height / 2;
+            
+            // Abstract Earth with multiple layers
+            // Base layer - dark
+            const baseGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+            baseGradient.addColorStop(0, '#001a33');
+            baseGradient.addColorStop(0.7, '#000d1a');
+            baseGradient.addColorStop(1, '#000000');
+            
+            ctx.fillStyle = baseGradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add abstract geometric patterns
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.clip();
+            
+            // Cyan energy flows
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 5; i++) {
+                const offset = (time * 0.00001 + i * 0.4) % 1;
+                const y = centerY + (radius * 2) * (offset - 0.5);
+                ctx.beginPath();
+                ctx.moveTo(centerX - radius, y);
+                ctx.quadraticCurveTo(centerX, y + Math.sin(offset * Math.PI * 2) * 20, centerX + radius, y);
+                ctx.stroke();
+            }
+            
+            // Green tech hexagons
+            ctx.fillStyle = 'rgba(0, 255, 100, 0.3)';
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2 + time * 0.00001;
+                const x = centerX + Math.cos(angle) * radius * 0.6;
+                const y = centerY + Math.sin(angle) * radius * 0.6;
+                
+                // Only draw if within bounds
+                if (Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)) < radius - 15) {
+                    ctx.beginPath();
+                    for (let j = 0; j < 6; j++) {
+                        const hexAngle = (j / 6) * Math.PI * 2;
+                        const hx = x + Math.cos(hexAngle) * 15;
+                        const hy = y + Math.sin(hexAngle) * 15;
+                        if (j === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+            
+            ctx.restore();
+            
+            // Grid overlay
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            
+            // Latitude lines
+            for (let i = 1; i < 6; i++) {
+                const y = centerY + (radius * 2 / 6) * (i - 3);
+                const x = Math.sqrt(radius * radius - Math.pow(y - centerY, 2));
+                ctx.beginPath();
+                ctx.moveTo(centerX - x, y);
+                ctx.lineTo(centerX + x, y);
+                ctx.stroke();
+            }
+            
+            // Longitude lines
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI;
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle);
+                ctx.beginPath();
+                ctx.moveTo(0, -radius);
+                ctx.lineTo(0, radius);
+                ctx.stroke();
+                ctx.restore();
+            }
+            
+            // Inner core glow
+            const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 0.5);
+            coreGradient.addColorStop(0, 'rgba(0, 255, 100, 0.4)');
+            coreGradient.addColorStop(0.5, 'rgba(0, 255, 255, 0.2)');
+            coreGradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Outer glow
+            const outerGlow = ctx.createRadialGradient(centerX, centerY, radius, centerX, centerY, radius + 30);
+            outerGlow.addColorStop(0, 'rgba(0, 255, 255, 0.4)');
+            outerGlow.addColorStop(0.5, 'rgba(0, 255, 100, 0.2)');
+            outerGlow.addColorStop(1, 'transparent');
+            ctx.fillStyle = outerGlow;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius + 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Tech border
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Ground station on right side of Earth
+            const stationAngle = -0.2; // Slightly above horizontal
+            const stationX = centerX + Math.cos(stationAngle) * radius;
+            const stationY = centerY + Math.sin(stationAngle) * radius;
+            drawGroundStation(stationX, stationY, stationAngle);
+            
+            return { centerX, centerY, radius, stationX, stationY, stationAngle };
+        }
+
+        function drawGroundStation(x, y, angle) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            
+            // Draw handheld radio style icon
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            
+            // Radio body
+            ctx.strokeRect(-6, -8, 12, 16);
+            
+            // Screen
+            ctx.fillRect(-3, -5, 6, 6);
+            
+            // Antenna pointing outward
+            ctx.beginPath();
+            ctx.moveTo(4, -8);
+            ctx.lineTo(4, -16);
+            ctx.stroke();
+            
+            // Antenna tip
+            ctx.beginPath();
+            ctx.arc(4, -16, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function drawSatellite(x, y, color, label, earth) {
+            // Calculate angle to make satellite tangent to orbit
+            const angle = Math.atan2(y - earth.centerY, x - earth.centerX) + Math.PI/2;
+            
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            
+            // Smaller satellite body
+            ctx.fillStyle = color;
+            ctx.fillRect(-8, -5, 16, 10);
+            
+            // Solar panels
+            ctx.fillRect(-20, -3, 10, 6);
+            ctx.fillRect(10, -3, 10, 6);
+            
+            // Details
+            ctx.fillStyle = 'black';
+            ctx.fillRect(-5, -3, 10, 2);
+            
+            ctx.restore();
+            
+            // Label (not rotated)
+            ctx.fillStyle = color;
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, x, y + 25);
+        }
+
+        function updatePings(deltaTime) {
+            // Update LEO ping
+            if (leoPing) {
+                leoPing.progress += deltaTime / LEO_ANIMATION_TIME;
+                
+                if (leoPing.progress >= 2) {
+                    leoRoundtrips++;
+                    document.getElementById('leoCount').textContent = leoRoundtrips;
+                    leoPing = null; // Remove ping
+                }
+            } else {
+                // Create new LEO ping
+                leoPing = {
+                    progress: 0,
+                    startTime: time
+                };
+            }
+            
+            // Update GEO ping
+            if (geoPing) {
+                geoPing.progress += deltaTime / GEO_ANIMATION_TIME;
+                
+                if (geoPing.progress >= 2) {
+                    geoRoundtrips++;
+                    document.getElementById('geoCount').textContent = geoRoundtrips;
+                    geoPing = null; // Remove ping
+                }
+            } else {
+                // Create new GEO ping
+                geoPing = {
+                    progress: 0,
+                    startTime: time
+                };
+            }
+        }
+
+        function drawPing(earth, targetX, targetY, ping, color) {
+            if (!ping) return;
+            
+            let progress;
+            if (ping.progress <= 1) {
+                // Going up
+                progress = ping.progress;
+            } else {
+                // Coming down
+                progress = 2 - ping.progress;
+            }
+            
+            // Linear interpolation from station to satellite
+            const x = earth.stationX + (targetX - earth.stationX) * progress;
+            const y = earth.stationY + (targetY - earth.stationY) * progress;
+            
+            // Draw ping as a pulse
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.9;
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Glow effect
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, 15);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.globalAlpha = 1;
+        }
+
+        function drawSignalPath(earth, targetX, targetY, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.3;
+            ctx.setLineDash([5, 5]);
+            
+            ctx.beginPath();
+            ctx.moveTo(earth.stationX, earth.stationY);
+            ctx.lineTo(targetX, targetY);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+        }
+
+        function animate(currentTime) {
+            const deltaTime = Math.min(currentTime - time, 100) || 16;
+            time = currentTime;
+            
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw stars
+            drawStars();
+            
+            // Draw title
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('LEO vs GEO Satellite Latency', width / 2, 40);
+            
+            const earth = drawEarth(time);
+            
+            // Calculate satellite positions - LEO above, GEO to the right
+            const leoX = earth.centerX + 180;
+            const leoY = earth.centerY - 50;
+            
+            const geoX = width - 100;
+            const geoY = earth.centerY;
+            
+            // Draw signal paths
+            drawSignalPath(earth, leoX, leoY, '#00ff00');
+            drawSignalPath(earth, geoX, geoY, '#ff6666');
+            
+            // Draw satellites
+            drawSatellite(leoX, leoY, '#00ff00', 'LEO', earth);
+            drawSatellite(geoX, geoY, '#ff6666', 'GEO', earth);
+            
+            // Update and draw pings
+            updatePings(deltaTime);
+            
+            drawPing(earth, leoX, leoY, leoPing, '#00ff00');
+            drawPing(earth, geoX, geoY, geoPing, '#ff6666');
+            
+            requestAnimationFrame(animate);
+        }
+        
+        animate(0);
+    </script>
+</body>
+</html>

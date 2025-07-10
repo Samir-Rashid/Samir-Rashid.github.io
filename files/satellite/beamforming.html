@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beamforming</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #0a1929 0%, #1e3a5f 50%, #2d5a8b 100%);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .title {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: min(20px, 5vw);
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="title">Beamforming</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Initialize canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Calculate ground height once
+        let groundHeight = Math.min(20, canvas.height * 0.025); // 2.5% of canvas height, max 20px
+        
+        // Dish properties
+        const dish = {
+            x: canvas.width / 2,
+            y: canvas.height - groundHeight - Math.max(35, Math.min(50, canvas.height * 0.08)),
+            width: Math.min(96, canvas.width * 0.2),
+            height: 25,
+            beamWidth: 25,
+            currentTarget: 0,
+            lastSwitch: 0
+        };
+        
+        // Satellites with different orbital inclinations
+        const satellites = [
+            {
+                id: 0,
+                name: 'SAT-1247',
+                x: 0.2 * canvas.width,
+                y: Math.min(150, canvas.height * 0.3),
+                speed: 75,
+                elevation: 65,
+                color: '#64c8ff',
+                angle: -3 * Math.PI / 180, // 3 degrees downward
+                startY: Math.min(150, canvas.height * 0.3)
+            },
+            {
+                id: 1,
+                name: 'SAT-3891',
+                x: 0.5 * canvas.width,
+                y: Math.min(120, canvas.height * 0.25),
+                speed: 55,
+                elevation: 45,
+                color: '#ff64c8',
+                angle: 8 * Math.PI / 180, // 8 degrees upward
+                startY: Math.min(120, canvas.height * 0.25)
+            },
+            {
+                id: 2,
+                name: 'SAT-5623',
+                x: 0.7 * canvas.width,
+                y: Math.min(140, canvas.height * 0.28),
+                speed: 90,
+                elevation: 80,
+                color: '#c8ff64',
+                angle: 2 * Math.PI / 180, // 2 degrees upward
+                startY: Math.min(140, canvas.height * 0.28)
+            },
+            {
+                id: 3,
+                name: 'SAT-7812',
+                x: 0.9 * canvas.width,
+                y: Math.min(100, canvas.height * 0.22),
+                speed: 65,
+                elevation: 55,
+                color: '#ffc864',
+                angle: -6 * Math.PI / 180, // 6 degrees downward
+                startY: Math.min(100, canvas.height * 0.22)
+            }
+        ];
+        
+        // Initialize satellite y positions based on their paths
+        satellites.forEach(sat => {
+            sat.y = sat.startY + Math.sin(sat.angle) * (sat.x - 100);
+            // Ensure initial positions are within reasonable bounds
+            const maxY = canvas.height * 0.7;
+            if (sat.y > maxY) {
+                sat.y = maxY;
+            }
+        });
+        
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // Update dish position
+            groundHeight = Math.min(20, canvas.height * 0.025);
+            dish.x = canvas.width / 2;
+            dish.y = canvas.height - groundHeight - Math.max(35, Math.min(50, canvas.height * 0.08));
+            dish.width = Math.min(96, canvas.width * 0.2);
+            
+            // Update satellite positions relative to new canvas size
+            const startYValues = [
+                Math.min(150, canvas.height * 0.3),
+                Math.min(120, canvas.height * 0.25),
+                Math.min(140, canvas.height * 0.28),
+                Math.min(100, canvas.height * 0.22)
+            ];
+            satellites.forEach((sat, index) => {
+                sat.startY = startYValues[index];
+                sat.y = sat.startY + Math.sin(sat.angle) * (sat.x - 100);
+            });
+            
+            // Recreate stars for new canvas size
+            createStars();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Animation properties
+        let animationTime = 0;
+        let stars = [];
+        let hoveredSatellite = -1;
+        
+        // Create stars
+        function createStars() {
+            stars = [];
+            for (let i = 0; i < 200; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height * 0.6),
+                    size: Math.random() * 2,
+                    twinkle: Math.random() * Math.PI * 2
+                });
+            }
+        }
+        
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // Update dish position
+            dish.x = canvas.width / 2;
+            dish.y = canvas.height - 150;
+            
+            // Recreate stars for new canvas size
+            createStars();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Initialize stars
+        createStars();
+        
+        // Find initial closest satellite
+        let initialClosest = 0;
+        let minDist = Infinity;
+        satellites.forEach((sat, index) => {
+            const dist = Math.sqrt(
+                Math.pow(sat.x - (dish.x - 12), 2) + 
+                Math.pow(sat.y - dish.y, 2)
+            );
+            if (dist < minDist && sat.x > 0 && sat.x < canvas.width) {
+                minDist = dist;
+                initialClosest = index;
+            }
+        });
+        dish.currentTarget = initialClosest;
+        
+        // Click handler for manual satellite switching
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            
+            let closestSat = -1;
+            let closestDist = Infinity;
+            
+            satellites.forEach((sat, index) => {
+                const dist = Math.sqrt(
+                    Math.pow(sat.x - clickX, 2) + 
+                    Math.pow(sat.y - clickY, 2)
+                );
+                if (dist < closestDist && dist < 30) { // Within 30px of satellite
+                    closestDist = dist;
+                    closestSat = index;
+                }
+            });
+            
+            if (closestSat !== -1) {
+                dish.currentTarget = closestSat;
+                dish.lastSwitch = animationTime;
+            }
+        });
+        
+        // Cursor change on hover
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            hoveredSatellite = -1;
+            let overSatellite = false;
+            
+            satellites.forEach((sat, index) => {
+                const dist = Math.sqrt(
+                    Math.pow(sat.x - mouseX, 2) + 
+                    Math.pow(sat.y - mouseY, 2)
+                );
+                if (dist < 30) {
+                    overSatellite = true;
+                    hoveredSatellite = index;
+                }
+            });
+            
+            canvas.style.cursor = overSatellite ? 'pointer' : 'default';
+        });
+        
+        // Reset hover when mouse leaves
+        canvas.addEventListener('mouseleave', () => {
+            hoveredSatellite = -1;
+            canvas.style.cursor = 'default';
+        });
+        createStars();
+        
+        // Update satellite info panel (I removed)
+        function updateSatellitePanel() {
+            const listEl = document.getElementById('satellite-list');
+            listEl.innerHTML = satellites.map((sat, index) => {
+                const distance = Math.sqrt(
+                    Math.pow(sat.x - dish.x, 2) + 
+                    Math.pow(sat.y - dish.y, 2)
+                );
+                const signalStrength = Math.max(0, Math.min(100, 100 - (distance / 5)));
+                
+                return `
+                    <div class="satellite-info ${dish.currentTarget === index ? 'active' : ''}" 
+                         onclick="switchBeam(${index})">
+                        <div style="color: ${sat.color}">
+                            🛰️ ${sat.name}
+                        </div>
+                        <div style="font-size: 11px; opacity: 0.8;">
+                            Elevation: ${sat.elevation}°
+                            <div class="signal-strength">
+                                <div class="signal-fill" style="width: ${signalStrength}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Switch beam to different satellite
+        window.switchBeam = function(satelliteIndex) {
+            dish.currentTarget = satelliteIndex;
+            updateSatellitePanel();
+        };
+        
+        // Draw ground
+        function drawGround() {
+            ctx.fillStyle = '#1a3a1a';
+            ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+            
+            // Add some ground texture
+            ctx.strokeStyle = '#0f2a0f';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 20) {
+                ctx.beginPath();
+                ctx.moveTo(i, canvas.height - groundHeight);
+                ctx.lineTo(i + 10, canvas.height);
+                ctx.stroke();
+            }
+        }
+        
+        // Draw stars
+        function drawStars() {
+            stars.forEach(star => {
+                const twinkle = Math.sin(animationTime * 2 + star.twinkle) * 0.5 + 0.5;
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + twinkle * 0.7})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size * (0.5 + twinkle * 0.5), 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        // Draw dish
+        function drawDish() {
+            // Calculate base dimensions to reach the ground
+            const baseTop = dish.y + 25;
+            const groundTop = canvas.height - groundHeight;
+            const baseHeight = groundTop - baseTop;
+            
+            // Dish mount/base
+            ctx.fillStyle = '#333';
+            ctx.fillRect(dish.x - 10, baseTop, 20, baseHeight);
+            
+            // Base plate on ground
+            ctx.fillStyle = '#222';
+            ctx.fillRect(dish.x - 15, groundTop, 30, 3);
+            
+            // Support arm (angled)
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(dish.x, dish.y + 25);
+            ctx.lineTo(dish.x - 12, dish.y);
+            ctx.stroke();
+            
+            // Joint
+            ctx.fillStyle = '#444';
+            ctx.beginPath();
+            ctx.arc(dish.x - 12, dish.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Phased array panel - flat and tilted
+            ctx.save();
+            ctx.translate(dish.x - 12, dish.y);
+            ctx.rotate(-20 * Math.PI / 180); // Tilt 20 degrees toward sky
+            
+            // Back panel
+            ctx.fillStyle = '#222';
+            ctx.fillRect(-dish.width/2 - 2, -dish.height/8 - 2, dish.width + 4, dish.height/4 + 4);
+            
+            // Main array surface with perspective
+            const gradient = ctx.createLinearGradient(-dish.width/2, 0, dish.width/2, 0);
+            gradient.addColorStop(0, '#555');
+            gradient.addColorStop(0.5, '#777');
+            gradient.addColorStop(1, '#666');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(-dish.width/2, -dish.height/8, dish.width, dish.height/4);
+            
+            // Array elements grid pattern
+            ctx.strokeStyle = '#444';
+            ctx.fillStyle = '#666';
+            ctx.lineWidth = 0.5;
+            
+            // Draw grid of antenna elements
+            for (let x = -dish.width/2 + 4; x < dish.width/2; x += 6) {
+                for (let y = -dish.height/8 + 2; y < dish.height/8; y += 6) {
+                    ctx.fillRect(x - 1, y - 1, 2, 2);
+                    ctx.strokeRect(x - 1, y - 1, 2, 2);
+                }
+            }
+            
+            // Edge highlight
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-dish.width/2, -dish.height/8, dish.width, dish.height/4);
+            
+            // Active indicator light
+            ctx.fillStyle = '#0f0';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#0f0';
+            ctx.beginPath();
+            ctx.arc(dish.width/2 - 8, 0, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            ctx.restore();
+            
+            // Dish label (only show if canvas is large enough)
+            if (canvas.height > 200) {
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Dish', dish.x, canvas.height - 3);
+            }
+        }
+        
+        // Draw satellites
+        function drawSatellites() {
+            let closestSatIndex = -1;
+            let closestDistance = Infinity;
+            
+            satellites.forEach((sat, index) => {
+                // Draw faint trail
+                ctx.save();
+                ctx.strokeStyle = `${sat.color}22`;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                
+                // Draw trail behind satellite
+                for (let i = 0; i < 100; i += 5) {
+                    const trailX = sat.x - i;
+                    const trailY = sat.startY + Math.sin(sat.angle) * (trailX - 100);
+                    if (i === 0) {
+                        ctx.moveTo(trailX, trailY);
+                    } else {
+                        ctx.lineTo(trailX, trailY);
+                    }
+                }
+                ctx.stroke();
+                ctx.restore();
+                
+                // Update position along orbital path
+                sat.x += sat.speed * 0.016;
+                sat.y = sat.startY + Math.sin(sat.angle) * (sat.x - 100);
+                
+                // Ensure satellite doesn't go below dish level
+                const maxY = Math.min(dish.y - 100, canvas.height * 0.6);
+                if (sat.y > maxY) {
+                    sat.y = maxY;
+                }
+                
+                // If satellite went off screen, wrap it
+                if (sat.x > canvas.width + 50 || sat.y < -50) {
+                    sat.x = -50;
+                    sat.y = sat.startY + Math.sin(sat.angle) * (sat.x - 100);
+                }
+                
+                // Calculate distance to dish for auto-switching
+                const beamOriginX = dish.x - 12;
+                const beamOriginY = dish.y;
+                const distance = Math.sqrt(
+                    Math.pow(sat.x - beamOriginX, 2) + 
+                    Math.pow(sat.y - beamOriginY, 2)
+                );
+                
+                // Track closest visible satellite
+                if (sat.x > 0 && sat.x < canvas.width && distance < closestDistance) {
+                    closestDistance = distance;
+                    closestSatIndex = index;
+                }
+                
+                // Draw satellite
+                ctx.save();
+                ctx.translate(sat.x, sat.y);
+                ctx.rotate(sat.angle);
+                
+                // Hover highlight
+                if (hoveredSatellite === index) {
+                    ctx.strokeStyle = sat.color;
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = 0.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+                
+                // Solar panels
+                ctx.fillStyle = '#003366';
+                ctx.fillRect(-30, -3, 20, 6);
+                ctx.fillRect(10, -3, 20, 6);
+                
+                // Body
+                ctx.fillStyle = sat.color;
+                ctx.fillRect(-8, -5, 16, 10);
+                
+                // Details
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 0.5;
+                ctx.strokeRect(-8, -5, 16, 10);
+                
+                ctx.restore();
+            });
+            
+            // Auto-switch to closest satellite
+            if (closestSatIndex !== -1 && animationTime - dish.lastSwitch > 2) { // 2 second cooldown
+                // Check if current satellite is out of range
+                const currentSat = satellites[dish.currentTarget];
+                const beamOriginX = dish.x - 12;
+                const beamOriginY = dish.y;
+                const currentDistance = Math.sqrt(
+                    Math.pow(currentSat.x - beamOriginX, 2) + 
+                    Math.pow(currentSat.y - beamOriginY, 2)
+                );
+                
+                // Switch if current is out of range or there's a much closer satellite
+                if (currentSat.x < -50 || currentSat.x > canvas.width + 50 || 
+                    currentDistance > 500 || 
+                    (closestDistance < currentDistance * 0.7)) {
+                    dish.currentTarget = closestSatIndex;
+                    dish.lastSwitch = animationTime;
+                }
+            }
+        }
+        
+        // Draw beam
+        function drawBeam() {
+            const targetSat = satellites[dish.currentTarget];
+            
+            // Ensure satellite has valid coordinates and is visible
+            if (!targetSat || !isFinite(targetSat.x) || !isFinite(targetSat.y) || 
+                targetSat.x < -50 || targetSat.x > canvas.width + 50) {
+                return;
+            }
+            
+            ctx.save();
+            
+            // Calculate beam direction from tilted dish position
+            const beamOriginX = dish.x - 12;
+            const beamOriginY = dish.y;
+            const dx = targetSat.x - beamOriginX;
+            const dy = targetSat.y - beamOriginY;
+            const angle = Math.atan2(dy, dx);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Beam gradient
+            const gradient = ctx.createLinearGradient(
+                beamOriginX, beamOriginY,
+                targetSat.x, targetSat.y
+            );
+            gradient.addColorStop(0, `${targetSat.color}88`);
+            gradient.addColorStop(0.5, `${targetSat.color}44`);
+            gradient.addColorStop(1, `${targetSat.color}22`);
+            
+            // Draw beam cone
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.moveTo(beamOriginX, beamOriginY);
+            
+            const beamAngle = dish.beamWidth * Math.PI / 180;
+            ctx.lineTo(
+                beamOriginX + Math.cos(angle - beamAngle) * distance,
+                beamOriginY + Math.sin(angle - beamAngle) * distance
+            );
+            ctx.lineTo(
+                beamOriginX + Math.cos(angle + beamAngle) * distance,
+                beamOriginY + Math.sin(angle + beamAngle) * distance
+            );
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw beam center line with animation
+            ctx.strokeStyle = targetSat.color;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 5]);
+            ctx.lineDashOffset = -animationTime * 50;
+            ctx.beginPath();
+            ctx.moveTo(beamOriginX, beamOriginY);
+            ctx.lineTo(targetSat.x, targetSat.y);
+            ctx.stroke();
+            
+            // Draw signal waves
+            for (let i = 0; i < 2; i++) {
+                const waveProgress = ((animationTime * 30 + i * 40) % 100) / 100;
+                const waveX = beamOriginX + dx * waveProgress;
+                const waveY = beamOriginY + dy * waveProgress;
+                const waveSize = 15 * waveProgress;
+                
+                ctx.strokeStyle = `${targetSat.color}${Math.floor((1 - waveProgress) * 200).toString(16).padStart(2, '0')}`;
+                ctx.lineWidth = 1.5 * (1 - waveProgress);
+                ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.arc(waveX, waveY, waveSize, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background elements
+            drawStars();
+            drawGround();
+            
+            // Draw beam (behind satellites)
+            drawBeam();
+            
+            // Draw foreground elements
+            drawSatellites();
+            drawDish();
+            
+            // Update animation
+            animationTime += 0.016;
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Initialize
+        animate();
+    </script>
+</body>
+</html>
