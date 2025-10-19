@@ -1,8 +1,10 @@
 ---
 permalink: /
 title: "Welcome Traveler, to Samir's Hypertext Garden!"
+bio: "hi"
 excerpt: 'I am a hardcore hacker on operating systems, hardware, and programming languages. Come visit my digital garden to see what I am growing.'
 author_profile: true
+layout: homepage
 redirect_from:
   - /about/
   - /about.html
