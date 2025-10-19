@@ -1,7 +1,7 @@
 ---
 permalink: /
 title: "Welcome Traveler, to Samir's Hypertext Garden!"
-bio: "hi"
+bio: "I am a hardcore software engineer and researcher building multiplanetary cellular service at [Starlink](https://starlink.com/). I contribute to the Rust-based [Tock Operating System](https://tockos.org/), where I secure devices such as roots of trust and FIDO security keys."
 excerpt: 'I am a hardcore hacker on operating systems, hardware, and programming languages. Come visit my digital garden to see what I am growing.'
 author_profile: true
 layout: homepage
@@ -16,9 +16,6 @@ redirect_from:
 <div class="notice notice--announcement" markdown="1">
 #### I plan on attending [Open Sauce](https://opensauce.com/) (July 18-20, 2025 in San Mateo, California) and [TockWorld](https://world.tockos.org/tockworld8), which is happening with [RustConf](https://rustconf.com/) (Sept 2-5, 2025 in Seattle, Washington). Reach out if you'd like to meet me there!
 </div>
-
-I am a hardcore software engineer and researcher building multiplanetary cellular service at [Starlink](https://starlink.com/).
-I contribute to the Rust-based [Tock Operating System](https://tockos.org/), where I secure devices such as roots of trust and FIDO security keys.
 
 My research tries to make systems understandable, safe, and correct. 
 

@@ -13,6 +13,27 @@ layout: compress
 
   <body>
 
+    <div id="twinkling-stars"></div>
+    <script>
+      const stars = document.getElementById('twinkling-stars');
+      for (let i = 0; i < 500; i++) {
+        const star = document.createElement('div');
+        star.className = 'twinkling-star';
+        const colors = ['#fff', '#ffadad', '#add8e6'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        star.style.backgroundColor = color;
+        star.style.top = `${Math.random() * 100}vh`;
+        star.style.left = `${Math.random() * 100}vw`;
+        star.style.width = `${Math.random() * 2 + 1}px`;
+        star.style.height = star.style.width;
+        star.style.animationDelay = `${Math.random() * 20}s`;
+        if (Math.random() > 0.5) {
+          star.classList.add('twinkle');
+        }
+        stars.appendChild(star);
+      }
+    </script>
+
     {% include browser-upgrade.html %}
     {% if false %}
       {% include head/banner.html %}
