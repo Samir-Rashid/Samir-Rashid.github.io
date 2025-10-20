@@ -1,49 +1,63 @@
 /* ==========================================================================
-   jQuery plugin settings and other scripts
-   ========================================================================== */
+jQuery plugin settings and other scripts
+
+NOTE: You need to run `npm run uglify` for changes here to reflect on the site.
+========================================================================== */
 
 $(document).ready(function () {
   // detect OS/browser preference
-  const browserPref = window.matchMedia('(prefers-color-scheme: dark)').matches
+  let browserPref = window.matchMedia('(prefers-color-scheme: dark)').matches
     ? 'dark'
     : 'light';
-
+  
   // Set the theme on page load or when explicitly called
-  var setTheme = function (theme) {
-    const use_theme =
-      theme ||
-      localStorage.getItem("theme") ||
-      $("html").attr("data-theme") ||
-      browserPref;
-
-    if (use_theme === "dark") {
+  var setTheme = function (theme_to_set) {
+    var theme = theme_to_set;
+    if (theme === 'auto') {
+      theme = browserPref;
+      $("#theme-icon").removeClass("fa-sun fa-moon").addClass("fa-desktop");
+    } else if (theme === 'dark') {
+      $("#theme-icon").removeClass("fa-sun fa-desktop").addClass("fa-moon");
+    } else { // light
+      $("#theme-icon").removeClass("fa-moon fa-desktop").addClass("fa-sun");
+    }
+  
+    if (theme === 'dark') {
       $("html").attr("data-theme", "dark");
-      $("#theme-icon").removeClass("fa-sun").addClass("fa-moon");
-    } else if (use_theme === "light") {
+    } else {
       $("html").removeAttr("data-theme");
-      $("#theme-icon").removeClass("fa-moon").addClass("fa-sun");
     }
   };
-
-  setTheme();
-
-  // if user hasn't chosen a theme, follow OS changes
+  
+  const stored_theme = localStorage.getItem("theme");
+  setTheme(stored_theme || 'auto');
+  
+  // if user has chosen auto, follow OS changes
   window
     .matchMedia('(prefers-color-scheme: dark)')
     .addEventListener("change", (e) => {
-      if (!localStorage.getItem("theme")) {
-        setTheme(e.matches ? "dark" : "light");
+      if (localStorage.getItem("theme") === 'auto' || !localStorage.getItem("theme")) {
+        browserPref = e.matches ? "dark" : "light";
+        setTheme('auto');
       }
     });
-
+  
   // Toggle the theme manually
   var toggleTheme = function () {
-    const current_theme = $("html").attr("data-theme");
-    const new_theme = current_theme === "dark" ? "light" : "dark";
+    const current_theme = localStorage.getItem("theme") || 'auto';
+    var new_theme;
+  
+    if (current_theme === 'light') {
+      new_theme = 'dark';
+    } else if (current_theme === 'dark') {
+      new_theme = 'auto';
+    } else { // auto
+      new_theme = 'light';
+    }
+  
     localStorage.setItem("theme", new_theme);
     setTheme(new_theme);
   };
-
   $('#theme-toggle').on('click', toggleTheme);
 
   // These should be the same as the settings in _variables.scss
