@@ -13,9 +13,9 @@ redirect_from:
 ---
 {% include base_path %}
 
-<div class="notice notice--announcement" markdown="1">
+<!-- <div class="notice notice--announcement" markdown="1">
 #### I plan on attending [Open Sauce](https://opensauce.com/) (July 18-20, 2025 in San Mateo, California) and [TockWorld](https://world.tockos.org/tockworld8), which is happening with [RustConf](https://rustconf.com/) (Sept 2-5, 2025 in Seattle, Washington). Reach out if you'd like to meet me there!
-</div>
+</div> -->
 
 My research tries to make systems understandable, safe, and correct. 
 
