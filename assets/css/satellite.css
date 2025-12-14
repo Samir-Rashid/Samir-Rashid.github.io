@@ -47,11 +47,11 @@
 
 .scene {
   perspective: 1500px;
+  width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  z-index: 2;
 }
 
 .scroll-arrow {

@@ -16,3 +16,7 @@ local/
 # Ingore files created by npm
 node_modules
 package-lock.json
+
+.env
+_posts/2026-01-01-rewind.md
+files/rewind/
