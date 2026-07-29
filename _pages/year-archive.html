@@ -19,8 +19,8 @@ redirect_from:
         </ul>
       </section>
       {% endunless %}
-      <section class="blogroll__year" aria-labelledby="year-{{ year }}">
-        <h2 id="year-{{ year }}" class="blogroll__year-heading">{{ year }}</h2>
+      <section class="blogroll__year" aria-labelledby="{{ year | slugify }}">
+        <h2 id="{{ year | slugify }}" class="blogroll__year-heading">{{ year }}</h2>
         <ul class="blogroll__list">
       {% assign written_year = year %}
     {% endif %}

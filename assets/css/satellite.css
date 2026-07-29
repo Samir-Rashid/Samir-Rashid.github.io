@@ -23,9 +23,9 @@
 }
 
 #satellite-hero {
-  /* Fill the viewport under the fixed masthead without overflowing it */
-  height: calc(100dvh - var(--masthead-offset, 70px));
-  max-height: calc(100dvh - var(--masthead-offset, 70px));
+  /* Fill the viewport under the fixed masthead. 70px matches $masthead-height in theme SCSS. */
+  height: calc(100dvh - 70px);
+  max-height: calc(100dvh - 70px);
   width: 100%;
   max-width: 100vw;
   position: relative;
