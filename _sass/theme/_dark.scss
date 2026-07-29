@@ -39,10 +39,10 @@ html[data-theme="dark"] {
     --global-bg-color                   : #{$background};
     --global-main-bg-color              : #090a0fd0;
     --global-footer-bg-color            : #{$background};
-    --global-border-color               : #{$light-gray};
-    --global-dark-border-color          : #{$background-light};
-    --global-code-background-color      : #fafafa;
-    --global-code-text-color            : #{$darker-gray};
+    --global-border-color               : rgba(255, 255, 255, 0.1);
+    --global-dark-border-color          : rgba(255, 255, 255, 0.07);
+    --global-code-background-color      : #12141c;
+    --global-code-text-color            : #e6edf3;
     --global-fig-caption-color          : #{$light-gray};
     --global-link-color                 : #{$link};
     --global-link-color-hover           : #{$link-dark};

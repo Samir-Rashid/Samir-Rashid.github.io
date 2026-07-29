@@ -92,3 +92,78 @@ div.highlighter-rouge, figure.highlight {
  .highlight .vi { color: teal; }
  .highlight .il { color: #009999; }
  .highlight .gc { color: #999; background-color: #EAF2F5; }
+
+/* Dark mode: dark pane + light body text; token colors stay readable enough */
+html[data-theme="dark"] {
+  div.highlighter-rouge,
+  figure.highlight {
+    background-color: var(--global-code-background-color);
+    border-color: var(--global-border-color);
+    box-shadow: none;
+  }
+
+  .highlight pre,
+  pre,
+  .highlight .hll {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--global-code-text-color);
+  }
+
+  a > code,
+  figcaption > code,
+  li > code,
+  p > code,
+  td > code {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+    color: var(--global-code-text-color);
+  }
+
+  /* Soften light-theme token colors that fail on dark backgrounds */
+  .highlight .n,
+  .highlight .p { color: #e6edf3; }
+  .highlight .c,
+  .highlight .cm,
+  .highlight .c1,
+  .highlight .cp,
+  .highlight .cs { color: #8b949e; }
+  .highlight .k,
+  .highlight .kc,
+  .highlight .kd,
+  .highlight .kn,
+  .highlight .kp,
+  .highlight .kr { color: #ff7b72; }
+  .highlight .s,
+  .highlight .s1,
+  .highlight .s2,
+  .highlight .sb,
+  .highlight .sc,
+  .highlight .sd,
+  .highlight .se,
+  .highlight .sh,
+  .highlight .si,
+  .highlight .sx { color: #a5d6ff; }
+  .highlight .m,
+  .highlight .mf,
+  .highlight .mh,
+  .highlight .mi,
+  .highlight .mo,
+  .highlight .il { color: #79c0ff; }
+  .highlight .na,
+  .highlight .nb,
+  .highlight .no,
+  .highlight .nv { color: #79c0ff; }
+  .highlight .nf,
+  .highlight .ne { color: #d2a8ff; }
+  .highlight .nc,
+  .highlight .kt,
+  .highlight .nn { color: #ffa657; }
+  .highlight .nt { color: #7ee787; }
+  .highlight .o,
+  .highlight .ow { color: #79c0ff; }
+  .highlight .gd { color: #ffa198; background-color: rgba(248, 81, 73, 0.15); }
+  .highlight .gi { color: #7ee787; background-color: rgba(46, 160, 67, 0.15); }
+  .highlight .err { color: #ffa198; background-color: rgba(248, 81, 73, 0.15); }
+}

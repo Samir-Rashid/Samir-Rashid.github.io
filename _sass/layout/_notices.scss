@@ -19,11 +19,12 @@
   background-color: mix(#fff, $notice-color, 70%);
   border-radius: $border-radius;
   box-shadow: 0 1px 1px rgba($notice-color, 0.25);
-  color: var(--global-code-text-color);
+  color: mix(#000, $notice-color, 72%);
 
   h4 {
     margin-top: 0 !important; /* override*/
     margin-bottom: 0.75em;
+    color: inherit;
   }
 
   @at-root .page__content #{&} h4 {
@@ -59,6 +60,24 @@
   ul {
     &:last-child {
       margin-bottom: 0; /* override*/
+    }
+  }
+
+  html[data-theme="dark"] & {
+    background-color: mix(#0d1117, $notice-color, 78%);
+    color: mix(#fff, $notice-color, 88%);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+
+    a {
+      color: mix(#fff, $notice-color, 55%);
+
+      &:hover {
+        color: mix(#fff, $notice-color, 80%);
+      }
+    }
+
+    code {
+      background-color: mix(#0d1117, $notice-color, 55%);
     }
   }
 }

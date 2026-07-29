@@ -25,16 +25,19 @@
 </div>
 {% endif %}
 
-<nav aria-label="upbring webring" style="display: flex; justify-content: center;">
-  <a href="https://kytrinh.me/ringfairy/godsped/previous">←</a>
-  <a href="https://kytrinh.me/ringfairy/">upbring</a>
-  <a href="https://kytrinh.me/ringfairy/godsped/next">→</a>
-</nav>
-<nav aria-label="gathering webring" style="display: flex; justify-content: center;">
-  <a href="https://kytrinh.me/gathering/godsped/previous">←</a>
-  <a href="https://kytrinh.me/gathering/">gathering</a>
-  <a href="https://kytrinh.me/gathering/godsped/next">→</a>
-</nav>
+<div class="webrings">
+  <nav class="webring" aria-label="upbring webring">
+    <a class="webring__step" href="https://kytrinh.me/ringfairy/godsped/previous" aria-label="Previous in upbring">←</a>
+    <a class="webring__name" href="https://kytrinh.me/ringfairy/">upbring</a>
+    <a class="webring__step" href="https://kytrinh.me/ringfairy/godsped/next" aria-label="Next in upbring">→</a>
+  </nav>
+
+  <nav class="webring" aria-label="gathering webring">
+    <a class="webring__step" href="https://kytrinh.me/gathering/godsped/previous" aria-label="Previous in gathering">←</a>
+    <a class="webring__name" href="https://kytrinh.me/gathering/">gathering</a>
+    <a class="webring__step" href="https://kytrinh.me/gathering/godsped/next" aria-label="Next in gathering">→</a>
+  </nav>
+</div>
 
 <div class="page__footer-copyright">
   &copy; {{ site.time | date: '%Y' }} {{ site.name | default: site.title }}, {{ site.data.ui-text[site.locale].powered_by | default: "Powered by" }} <a href="http://jekyllrb.com" rel="nofollow">Jekyll</a> &amp; <a href="https://github.com/academicpages/academicpages.github.io">AcademicPages</a>, a fork of <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">Minimal Mistakes</a>.<br />

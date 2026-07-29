@@ -1,0 +1,26 @@
+{% include base_path %}
+
+{% if post.id %}
+  {% assign title = post.title | markdownify | remove: "<p>" | remove: "</p>" %}
+{% else %}
+  {% assign title = post.title %}
+{% endif %}
+
+{% assign is_recommended = false %}
+{% for tag in post.tags %}
+  {% if tag == "recommended read" %}
+    {% assign is_recommended = true %}
+  {% endif %}
+{% endfor %}
+
+<li class="blogroll-item{% if is_recommended %} blogroll-item--recommended{% endif %}">
+  <time class="blogroll-item__date" datetime="{{ post.date | date_to_xmlschema }}">
+    {{ post.date | date: "%b %-d" }}
+  </time>
+  <div class="blogroll-item__main">
+    <a class="blogroll-item__title" href="{{ base_path }}{{ post.url }}" rel="permalink">{{ title }}</a>
+    {% if is_recommended %}
+      <em class="recommend">Recommended read</em>
+    {% endif %}
+  </div>
+</li>
