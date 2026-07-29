@@ -398,7 +398,6 @@
     border-top-right-radius: $border-radius;
 
     html[data-theme="dark"] & {
-      /* base-color is near-black in dark mode; use link blue so the header reads */
       background: var(--global-link-color);
     }
   }
