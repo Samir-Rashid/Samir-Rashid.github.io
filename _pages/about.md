@@ -1,10 +1,6 @@
 ---
 permalink: /
 title: "Welcome Wanderer, to Samir's Hypertext Garden!"
-# Line break after the comma is only for the hero display
-hero_title: |
-  Welcome Wanderer,
-  to Samir's Hypertext Garden!
 bio: "I am a hardcore software engineer and researcher building multiplanetary cellular service at [Starlink Mobile](https://starlink.com/). I contribute to the Rust-based [Tock Operating System](https://tockos.org/), where I secure devices such as roots of trust and FIDO security keys."
 excerpt: 'I am a hardcore hacker on operating systems, hardware, and programming languages. Come visit my digital garden to see what I am growing.'
 author_profile: true

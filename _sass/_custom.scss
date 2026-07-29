@@ -4,19 +4,24 @@
 
 // recommended read blog post
 .recommend {
+    display: inline-block;
     border-radius: 999px;
     background: #d6ffbd;
     color: #278500;
-    padding: 4px 8px;
+    padding: 0.18rem 0.55rem;
     overflow: hidden;
     white-space: nowrap;
-    // font-family: "Inter";
-    font-weight: 900;
-    // font-size: 12px;
-    // line-height: 16px;
-    letter-spacing: 0.02em;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     font-feature-settings: "cpsp" on;
+    font-style: normal;
+
+    html[data-theme="dark"] & {
+        background: rgba(125, 211, 120, 0.14);
+        color: #86efac;
+    }
 }
 
 // 10 reasons tuas

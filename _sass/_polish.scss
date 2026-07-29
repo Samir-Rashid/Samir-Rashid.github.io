@@ -2,7 +2,6 @@
    Blogroll, soft chrome, remarkbox shell
    ========================================================================== */
 
-/* Soft structural hairlines */
 html[data-theme="dark"] {
   .masthead::after {
     background: rgba(255, 255, 255, 0.1);
@@ -18,7 +17,6 @@ html[data-theme="dark"] {
   }
 }
 
-/* Footer webring — aligned arrows + names */
 .page__footer {
   .webrings {
     display: flex;
@@ -146,24 +144,6 @@ html[data-theme="dark"] {
 
 .blogroll-item--recommended .blogroll-item__title {
   font-weight: 600;
-}
-
-.blogroll-item__badge {
-  display: inline-block;
-  padding: 0.18rem 0.55rem;
-  border-radius: 999px;
-  background: #d6ffbd;
-  color: #278500;
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-
-  html[data-theme="dark"] & {
-    background: rgba(125, 211, 120, 0.14);
-    color: #86efac;
-  }
 }
 
 /* Remarkbox shell */

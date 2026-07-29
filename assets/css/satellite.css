@@ -327,7 +327,6 @@
   }
 }
 
-/* Moon crescent — scroll hint, pinned inside the hero (not a flex item) */
 .scroll-cue {
   position: absolute;
   left: 50%;
