@@ -11,13 +11,6 @@ redirect_from:
 {% include base_path %}
 
 <div class="blogroll">
-  <div class="blogroll__toolbar">
-    <a class="blogroll__feed-btn" href="{{ base_path }}/feed.xml">
-      <i class="fa fa-fw fa-rss-square" aria-hidden="true"></i>
-      Feed
-    </a>
-  </div>
-
   {% assign written_year = "" %}
   {% for post in site.posts %}
     {% assign year = post.date | date: "%Y" %}

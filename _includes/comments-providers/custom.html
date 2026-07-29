@@ -1,9 +1,9 @@
-<!-- Remarkbox — theme follows site light/dark via &mode= -->
+<!-- Remarkbox: pick light/dark once from site theme; do not reload on toggle -->
 <div id="remarkbox-div" class="remarkbox-wrap">
   <noscript>
     <iframe
       id="remarkbox-iframe"
-      src="https://my.remarkbox.com/embed?nojs=true&amp;mode=light"
+      src="https://my.remarkbox.com/embed?nojs=true"
       style="height:600px;width:100%;border:none!important"
       tabindex="0"
       title="Comments"
@@ -14,31 +14,30 @@
 <script>
 (function () {
   var rb_owner_key = "63e653c4-fabf-11eb-ac0b-040140774501";
-  var thread_uri = window.location.href.split("#")[0];
-  var thread_title = window.document.title;
-  var thread_fragment = window.location.hash;
-  var resizerAttached = false;
 
+  // Match theme toggle storage (assets/js/_main.js): dark | light | auto
   function siteIsDark() {
-    // Prefer explicit site theme (html[data-theme="dark"]), then OS preference.
-    if (document.documentElement.getAttribute("data-theme") === "dark") {
-      return true;
-    }
-    if (document.documentElement.hasAttribute("data-theme")) {
-      return false; // data-theme present but not dark → light
-    }
-    var stored = null;
     try {
-      stored = localStorage.getItem("theme");
+      var stored = localStorage.getItem("theme") || "auto";
+      if (stored === "dark") return true;
+      if (stored === "light") return false;
     } catch (e) {}
-    if (stored === "dark") return true;
-    if (stored === "light") return false;
+    // data-theme may already be set if main.js ran first
+    if (document.documentElement.getAttribute("data-theme") === "dark") return true;
+    if (document.documentElement.hasAttribute("data-theme")) return false;
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   }
 
-  function buildSrc() {
+  function bootRemarkbox() {
+    var host = document.getElementById("remarkbox-div");
+    if (!host || document.getElementById("remarkbox-iframe")) return;
+
+    var thread_uri = window.location.href.split("#")[0];
+    var thread_title = window.document.title;
+    var thread_fragment = window.location.hash;
     var mode = siteIsDark() ? "dark" : "light";
-    return (
+
+    var rb_src =
       "https://my.remarkbox.com/embed" +
       "?rb_owner_key=" +
       rb_owner_key +
@@ -48,86 +47,45 @@
       encodeURIComponent(thread_uri) +
       "&mode=" +
       mode +
-      thread_fragment
-    );
-  }
+      thread_fragment;
 
-  function attachResizer(ifrm) {
-    if (resizerAttached || typeof iFrameResize !== "function") return;
-    iFrameResize(
-      {
-        checkOrigin: ["https://my.remarkbox.com"],
-        inPageLinks: true,
-        initCallback: function (e) {
-          if (thread_fragment && e.iFrameResizer) {
-            e.iFrameResizer.moveToAnchor(thread_fragment);
-          }
+    var ifrm = document.createElement("iframe");
+    ifrm.setAttribute("id", "remarkbox-iframe");
+    ifrm.setAttribute("scrolling", "no");
+    ifrm.setAttribute("src", rb_src);
+    ifrm.setAttribute("frameborder", "0");
+    ifrm.setAttribute("tabindex", "0");
+    ifrm.setAttribute("title", "Comments");
+    ifrm.style.width = "100%";
+    ifrm.style.border = "none";
+    ifrm.style.background = "transparent";
+    host.appendChild(ifrm);
+
+    if (typeof iFrameResize === "function") {
+      iFrameResize(
+        {
+          checkOrigin: ["https://my.remarkbox.com"],
+          inPageLinks: true,
+          initCallback: function (e) {
+            if (thread_fragment && e.iFrameResizer) {
+              e.iFrameResizer.moveToAnchor(thread_fragment);
+            }
+          },
         },
-      },
-      ifrm
-    );
-    resizerAttached = true;
-  }
-
-  function createOrUpdateRemarkbox() {
-    var host = document.getElementById("remarkbox-div");
-    if (!host) return;
-
-    var src = buildSrc();
-    var ifrm = document.getElementById("remarkbox-iframe");
-
-    if (!ifrm) {
-      ifrm = document.createElement("iframe");
-      ifrm.setAttribute("id", "remarkbox-iframe");
-      ifrm.setAttribute("scrolling", "no");
-      ifrm.setAttribute("frameborder", "0");
-      ifrm.setAttribute("tabindex", "0");
-      ifrm.setAttribute("title", "Comments");
-      ifrm.setAttribute("loading", "lazy");
-      ifrm.style.width = "100%";
-      ifrm.style.border = "none";
-      ifrm.style.background = "transparent";
-      ifrm.style.colorScheme = siteIsDark() ? "dark" : "light";
-      host.appendChild(ifrm);
-      ifrm.setAttribute("src", src);
-      // Resizer after load so contentWindow is ready
-      ifrm.addEventListener("load", function onLoad() {
-        attachResizer(ifrm);
-      });
-    } else {
-      // Theme changed — reload embed with matching mode
-      var currentMode = (ifrm.getAttribute("src") || "").match(/[?&]mode=(dark|light)/);
-      var nextMode = siteIsDark() ? "dark" : "light";
-      if (!currentMode || currentMode[1] !== nextMode) {
-        ifrm.style.colorScheme = nextMode;
-        ifrm.setAttribute("src", src);
-      }
+        ifrm
+      );
     }
   }
 
-  createOrUpdateRemarkbox();
+  // Defer until after theme init in main.min.js (jQuery ready on DOMContentLoaded)
+  function scheduleBoot() {
+    setTimeout(bootRemarkbox, 0);
+  }
 
-  // Follow theme toggle (data-theme on <html>)
-  var themeObserver = new MutationObserver(function (mutations) {
-    for (var i = 0; i < mutations.length; i++) {
-      if (mutations[i].attributeName === "data-theme") {
-        createOrUpdateRemarkbox();
-        break;
-      }
-    }
-  });
-  themeObserver.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme"],
-  });
-
-  // Follow OS preference when site theme is "auto" (no data-theme / auto storage)
-  if (window.matchMedia) {
-    window
-      .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", function () {
-        createOrUpdateRemarkbox();
-      });
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", scheduleBoot);
+  } else {
+    scheduleBoot();
   }
 })();
 </script>

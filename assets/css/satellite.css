@@ -327,15 +327,6 @@
   }
 }
 
-@keyframes intro {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 /* Moon crescent — scroll hint, pinned inside the hero (not a flex item) */
 .scroll-cue {
   position: absolute;
@@ -371,12 +362,6 @@
   }
   50% {
     transform: translateY(7px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .scroll-cue__moon {
-    animation: none;
   }
 }
 
