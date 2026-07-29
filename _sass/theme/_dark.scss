@@ -39,7 +39,6 @@ html[data-theme="dark"] {
     --global-bg-color                   : #{$background};
     --global-main-bg-color              : #090a0fd0;
     --global-footer-bg-color            : #{$background};
-    /* Soft hairlines — low contrast on near-black so chrome doesn't shout */
     --global-border-color               : rgba(255, 255, 255, 0.1);
     --global-dark-border-color          : rgba(255, 255, 255, 0.07);
     --global-code-background-color      : #12141c;
