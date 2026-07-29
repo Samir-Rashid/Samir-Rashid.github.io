@@ -1,26 +1,11 @@
 /* ==========================================================================
-   POLISH — kept styles only (blogroll, webring, comments, soft chrome)
+   Blogroll, soft chrome, remarkbox shell
    ========================================================================== */
 
-/* Structural rules — quieter than default border tokens */
-.masthead::after {
-  opacity: 0.55;
-}
-
-.page__footer {
-  border-top-color: var(--global-dark-border-color);
-}
-
-.page__content h2,
-.archive__subtitle {
-  border-bottom-color: var(--global-border-color);
-  border-bottom-width: 1px;
-}
-
+/* Soft structural hairlines */
 html[data-theme="dark"] {
   .masthead::after {
     background: rgba(255, 255, 255, 0.1);
-    opacity: 1;
   }
 
   .page__footer {
@@ -28,16 +13,12 @@ html[data-theme="dark"] {
   }
 
   .page__content h2,
-  .archive__subtitle,
-  .blogroll__year-heading {
+  .archive__subtitle {
     border-bottom-color: rgba(255, 255, 255, 0.08);
   }
 }
 
-/* --------------------------------------------------------------------------
-   Footer webring
-   -------------------------------------------------------------------------- */
-
+/* Footer webring — aligned arrows + names */
 .page__footer {
   .webrings {
     display: flex;
@@ -89,10 +70,7 @@ html[data-theme="dark"] {
   }
 }
 
-/* --------------------------------------------------------------------------
-   Blogroll (/blog) — styles scoped to .blogroll in page content only
-   -------------------------------------------------------------------------- */
-
+/* Blogroll */
 .blogroll {
   margin-top: 0.35rem;
 }
@@ -108,12 +86,10 @@ html[data-theme="dark"] {
 .blogroll__year-heading {
   margin: 0 0 0.45rem;
   padding: 0;
-  font-family: $sans-serif;
   font-size: 1.08rem;
   font-weight: 600;
   letter-spacing: -0.015em;
   line-height: 1.4;
-  text-transform: none;
   color: var(--global-text-color-light);
   border: 0;
 }
@@ -131,8 +107,6 @@ html[data-theme="dark"] {
   align-items: baseline;
   padding: 0.4rem 0;
   margin: 0;
-  border: 0;
-  background: none;
 
   @include breakpoint($medium) {
     grid-template-columns: 5.75rem minmax(0, 1fr);
@@ -141,11 +115,8 @@ html[data-theme="dark"] {
 }
 
 .blogroll-item__date {
-  font-family: $sans-serif;
   font-size: 1.08rem;
-  font-weight: 400;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
   color: var(--global-text-color-light);
   white-space: nowrap;
   line-height: 1.4;
@@ -160,7 +131,6 @@ html[data-theme="dark"] {
 }
 
 .blogroll-item__title {
-  font-family: $sans-serif;
   font-size: 1.08rem;
   font-weight: 500;
   letter-spacing: -0.018em;
@@ -179,20 +149,16 @@ html[data-theme="dark"] {
 }
 
 .blogroll-item__badge {
-  flex: 0 0 auto;
   display: inline-block;
   padding: 0.18rem 0.55rem;
   border-radius: 999px;
   background: #d6ffbd;
   color: #278500;
-  font-family: $sans-serif;
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.04em;
-  line-height: 1.2;
   text-transform: uppercase;
   white-space: nowrap;
-  font-feature-settings: "cpsp" on;
 
   html[data-theme="dark"] & {
     background: rgba(125, 211, 120, 0.14);
@@ -200,47 +166,23 @@ html[data-theme="dark"] {
   }
 }
 
-/* --------------------------------------------------------------------------
-   Remarkbox comments shell
-   -------------------------------------------------------------------------- */
-
-.page__comments {
-  margin-top: 2.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--global-border-color);
-}
-
+/* Remarkbox shell */
 .remarkbox-wrap {
   width: 100%;
   margin-top: 0.75rem;
   padding: 0.85rem 0.75rem 0.5rem;
   border: 1px solid var(--global-border-color);
-  border-radius: 14px;
-  background: var(--global-surface-color, rgba(128, 128, 128, 0.06));
+  border-radius: $border-radius;
   overflow: hidden;
-  color-scheme: light;
 
   html[data-theme="dark"] & {
     color-scheme: dark;
-    background: rgba(255, 255, 255, 0.02);
   }
 }
 
 #remarkbox-iframe {
   display: block;
   width: 100%;
-  min-height: 180px;
   border: 0 !important;
   background: transparent;
-  color-scheme: inherit;
-}
-
-.page__comments-title {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-  font-family: $monospace;
-  font-size: $type-size-7;
-  letter-spacing: 0.1em;
-  color: var(--global-text-color-light);
 }

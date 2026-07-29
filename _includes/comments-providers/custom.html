@@ -1,91 +1,66 @@
-<!-- Remarkbox: pick light/dark once from site theme; do not reload on toggle -->
+<!-- Remarkbox - Your readers want to communicate with you -->
 <div id="remarkbox-div" class="remarkbox-wrap">
   <noscript>
-    <iframe
-      id="remarkbox-iframe"
-      src="https://my.remarkbox.com/embed?nojs=true"
-      style="height:600px;width:100%;border:none!important"
-      tabindex="0"
-      title="Comments"
-    ></iframe>
+    <iframe id="remarkbox-iframe" src="https://my.remarkbox.com/embed?nojs=true" style="height:600px;width:100%;border:none!important" tabindex="0"></iframe>
   </noscript>
 </div>
 <script src="https://my.remarkbox.com/static/js/iframe-resizer/iframeResizer.min.js"></script>
 <script>
 (function () {
   var rb_owner_key = "63e653c4-fabf-11eb-ac0b-040140774501";
+  var stored = null;
+  try { stored = localStorage.getItem("theme"); } catch (e) {}
+  var dark =
+    stored === "dark" ||
+    (stored !== "light" &&
+      ((document.documentElement.getAttribute("data-theme") === "dark") ||
+        (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)));
+  var mode = dark ? "dark" : "light";
 
-  // Match theme toggle storage (assets/js/_main.js): dark | light | auto
-  function siteIsDark() {
-    try {
-      var stored = localStorage.getItem("theme") || "auto";
-      if (stored === "dark") return true;
-      if (stored === "light") return false;
-    } catch (e) {}
-    // data-theme may already be set if main.js ran first
-    if (document.documentElement.getAttribute("data-theme") === "dark") return true;
-    if (document.documentElement.hasAttribute("data-theme")) return false;
-    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-  }
+  var thread_uri = window.location.href.split("#")[0];
+  var thread_title = window.document.title;
+  var thread_fragment = window.location.hash;
 
-  function bootRemarkbox() {
-    var host = document.getElementById("remarkbox-div");
-    if (!host || document.getElementById("remarkbox-iframe")) return;
+  var rb_src =
+    "https://my.remarkbox.com/embed" +
+    "?rb_owner_key=" + rb_owner_key +
+    "&thread_title=" + encodeURIComponent(thread_title) +
+    "&thread_uri=" + encodeURIComponent(thread_uri) +
+    "&mode=" + mode +
+    thread_fragment;
 
-    var thread_uri = window.location.href.split("#")[0];
-    var thread_title = window.document.title;
-    var thread_fragment = window.location.hash;
-    var mode = siteIsDark() ? "dark" : "light";
-
-    var rb_src =
-      "https://my.remarkbox.com/embed" +
-      "?rb_owner_key=" +
-      rb_owner_key +
-      "&thread_title=" +
-      encodeURIComponent(thread_title) +
-      "&thread_uri=" +
-      encodeURIComponent(thread_uri) +
-      "&mode=" +
-      mode +
-      thread_fragment;
-
+  function create_remarkbox_iframe() {
     var ifrm = document.createElement("iframe");
     ifrm.setAttribute("id", "remarkbox-iframe");
     ifrm.setAttribute("scrolling", "no");
     ifrm.setAttribute("src", rb_src);
     ifrm.setAttribute("frameborder", "0");
     ifrm.setAttribute("tabindex", "0");
-    ifrm.setAttribute("title", "Comments");
+    ifrm.setAttribute("title", "Remarkbox");
     ifrm.style.width = "100%";
-    ifrm.style.border = "none";
-    ifrm.style.background = "transparent";
-    host.appendChild(ifrm);
-
-    if (typeof iFrameResize === "function") {
-      iFrameResize(
-        {
-          checkOrigin: ["https://my.remarkbox.com"],
-          inPageLinks: true,
-          initCallback: function (e) {
-            if (thread_fragment && e.iFrameResizer) {
-              e.iFrameResizer.moveToAnchor(thread_fragment);
-            }
-          },
-        },
-        ifrm
-      );
-    }
+    document.getElementById("remarkbox-div").appendChild(ifrm);
   }
 
-  // Defer until after theme init in main.min.js (jQuery ready on DOMContentLoaded)
-  function scheduleBoot() {
-    setTimeout(bootRemarkbox, 0);
+  // After theme init in main.min.js
+  function boot() {
+    if (document.getElementById("remarkbox-iframe")) return;
+    create_remarkbox_iframe();
+    iFrameResize(
+      {
+        checkOrigin: ["https://my.remarkbox.com"],
+        inPageLinks: true,
+        initCallback: function (e) {
+          e.iFrameResizer.moveToAnchor(thread_fragment);
+        }
+      },
+      document.getElementById("remarkbox-iframe")
+    );
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scheduleBoot);
+    document.addEventListener("DOMContentLoaded", function () { setTimeout(boot, 0); });
   } else {
-    scheduleBoot();
+    setTimeout(boot, 0);
   }
 })();
 </script>
