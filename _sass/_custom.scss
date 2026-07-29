@@ -31,10 +31,10 @@ $ucsd-blue: #00629B;
 $ucsd-yellow: #FFCD00;
 $ucsd-gold: #C69214;
 
-// Custom Quote
+// Custom Quote (TUAS posts use .quote-*; homepage uses .commentary-*)
 
 .quote-author {
-	background-color:$ucsd-gold; //rgb(69, 26, 3);
+	background-color:$ucsd-gold;
 	color: white;
 	letter-spacing:.025em;
 	font-feature-settings:"smcp";
@@ -52,20 +52,25 @@ $ucsd-gold: #C69214;
 
 .quote-body {
 	border: solid;
-    color: var(--global-code-text-color);
-	background-color:rgb(255, 247, 237);
+	color: var(--global-text-color);
+	background-color: rgb(255, 247, 237);
 	border-radius:.5rem;
-	border-color: $ucsd-gold; //rgb(69, 26, 3);
+	border-color: $ucsd-gold;
 	border-width: 2px;
 	padding-left:1.25rem;
 	padding-right:1.25rem;
 	padding-top: 1.25em;
 	padding-bottom: 0.5em;
 	margin-bottom: 0.75em;
+
+	html[data-theme="dark"] & {
+		background-color: rgba(198, 146, 20, 0.14);
+		border-color: rgba(255, 205, 0, 0.45);
+	}
 }
 
 .commentary-author {
-	background-color:$ucsd-blue; //rgb(69, 26, 3);
+	background-color:$ucsd-blue;
 	color: white;
 	letter-spacing:.025em;
 	font-feature-settings:"smcp";
@@ -82,17 +87,22 @@ $ucsd-gold: #C69214;
 }
 
 .commentary-body {
-    color: var(--global-code-text-color);
+	color: var(--global-text-color);
 	border: solid;
-	background-color:rgb(237, 243, 255);
+	background-color: rgb(237, 243, 255);
 	border-radius:.5rem;
-	border-color: $ucsd-blue; //rgb(69, 26, 3);
+	border-color: $ucsd-blue;
 	border-width: 2px;
 	padding-left:1.25rem;
 	padding-right:1.25rem;
 	padding-top: 1.25em;
 	padding-bottom: 0.5em;
 	margin-bottom: 0.75em;
+
+	html[data-theme="dark"] & {
+		background-color: rgba(14, 161, 197, 0.12);
+		border-color: rgba(14, 161, 197, 0.45);
+	}
 }
 
 // for figure captions
